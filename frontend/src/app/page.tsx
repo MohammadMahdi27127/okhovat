@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import Preloader from '@/components/Preloader'
 import { Home, FileText, PlusCircle, TrendingUp, User } from 'lucide-react'
 
@@ -29,11 +30,11 @@ export default function HomePage() {
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          <NavItem icon={<Home size={20} />} label="خانهٔ اخوت" active />
-          <NavItem icon={<FileText size={20} />} label="پست‌ها" />
-          <NavItem icon={<PlusCircle size={20} />} label="پست جدید" />
-          <NavItem icon={<TrendingUp size={20} />} label="رشد فردی" />
-          <NavItem icon={<User size={20} />} label="پروفایل من" />
+          <NavItem href="/" icon={<Home size={20} />} label="خانهٔ اخوت" active />
+          <NavItem href="/posts" icon={<FileText size={20} />} label="پست‌ها" />
+          <NavItem href="/new-post" icon={<PlusCircle size={20} />} label="پست جدید" />
+          <NavItem href="/growth" icon={<TrendingUp size={20} />} label="رشد فردی" />
+          <NavItem href="/profile" icon={<User size={20} />} label="پروفایل من" />
         </nav>
 
         <div className="p-4 border-t border-slate-100 text-xs text-slate-500">
@@ -81,9 +82,10 @@ export default function HomePage() {
   )
 }
 
-function NavItem({ icon, label, active = false }: { icon: React.ReactNode; label: string; active?: boolean }) {
+function NavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <button
+    <Link
+      href={href}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
         active
           ? 'bg-okhovat-50 text-okhovat-700'
@@ -92,7 +94,7 @@ function NavItem({ icon, label, active = false }: { icon: React.ReactNode; label
     >
       {icon}
       {label}
-    </button>
+    </Link>
   )
 }
 

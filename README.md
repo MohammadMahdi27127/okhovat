@@ -2,40 +2,53 @@
 
 سامانه جامع مدیریت و تعامل گروه اخوت
 
-## درباره پروژه
+## وضعیت فعلی پروژه
 
-این سامانه برای یک گروه ۶۰ نفره طراحی شده که شامل:
-- ۷ حلقه (هر حلقه ۲ سر حلقه)
-- ۱۰ کارگروه
-- ۴ مربی
-- سیستم پست و تعامل اجتماعی
-- فرم رشد فردی روزانه
+### ✅ انجام‌شده
+
+**بک‌اند (Django + PostgreSQL)**
+- مدل‌های کامل دیتابیس (User با نقش‌ها، Post، GrowthLog، UserInteraction، Reel و ...)
+- سیستم احراز هویت با JWT و کد گروهی
+- APIهای اولیه (لاگین، پست‌ها، رشد فردی، آنالیتیکس)
+- ادمین پنل
+- Docker Compose برای PostgreSQL
+
+**فرانت‌اند (Next.js + Tailwind + Framer Motion)**
+- ساختار پروژه Next.js
+- Preloader الهام‌گرفته از NeoLeaf با نوشته «اخوت»
+- اسکلت داشبورد با سایدبار و کارت خوش‌آمدگویی
+- رنگ‌بندی و فونت هماهنگ با هویت اخوت
+
+### 🚧 در حال انجام
+- تکمیل صفحات (پست‌ها، رشد فردی، پروفایل)
+- اتصال فرانت به بک‌اند
+- انیمیشن‌های بیشتر
 - پنل مربی و ادمین
-- سیستم امتیازدهی و رتبه‌بندی
-- انیمیشن‌های مدرن و تجربه کاربری لوکس
-
-## تکنولوژی‌ها
-
-- **Backend:** Django + Django REST Framework
-- **Database:** PostgreSQL
-- **Frontend:** Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion
-- **Authentication:** JWT / Session-based with Group Code
-- **AI Companion:** آماده برای اتصال به مدل زبانی
-
-## ساختار پروژه
-
-```
-okhovat/
-├── backend/          # Django project
-├── frontend/         # Next.js application
-├── docker-compose.yml
-└── README.md
-```
-
-## وضعیت فعلی
-
-پروژه در حال ساخت است...
 
 ## راه‌اندازی
 
-به زودی اضافه می‌شود.
+### بک‌اند
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+# PostgreSQL را با docker-compose up -d اجرا کنید
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+### فرانت‌اند
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+سایت روی http://localhost:3000 در دسترس خواهد بود.
+
+## تکنولوژی‌ها
+- Backend: Django 5 + DRF + SimpleJWT + PostgreSQL
+- Frontend: Next.js 14 + TypeScript + Tailwind CSS + Framer Motion

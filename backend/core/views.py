@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import AnonRateThrottle
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import timedelta
@@ -23,9 +24,17 @@ from .cache_utils import (
     invalidate_posts_cache, invalidate_rings_cache, invalidate_admin_stats,
 )
 
+# ویوهای تکمیلی
+from .views_extra import (
+    ForgotPasswordView,
+    ResetPasswordView,
+    AvatarUploadView,
+    WorkgroupDetailView,
+    WorkgroupContentCreateView,
+)
+
 
 class LoginRateThrottle(AnonRateThrottle):
-    """محدودیت تلاش لاگین: ۵ بار در دقیقه"""
     rate = '5/min'
 
 
@@ -65,6 +74,7 @@ class MeView(generics.RetrieveUpdateAPIView):
 
 class PostListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         qs = Post.objects.select_related('user', 'related_ring', 'related_workgroup').all()
@@ -81,7 +91,11 @@ class PostListCreateView(generics.ListCreateAPIView):
         return PostSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        media = self.request.FILES.get('media')
+        if media and media.size > 10 * 1024 * 1024:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'media': 'حجم فایل حداکثر ۱۰ مگابایت است'})
+        serializer.save(user=self.request.user, media=media)
         invalidate_posts_cache()
         invalidate_admin_stats()
 
@@ -182,7 +196,7 @@ class RingListView(APIView):
 
         qs = Ring.objects.all().order_by('rank', '-score')
         data = RingSerializer(qs, many=True).data
-        cache_set(CACHE_RINGS, data, timeout=120)  # ۲ دقیقه
+        cache_set(CACHE_RINGS, data, timeout=120)
         return Response(data)
 
 
@@ -196,7 +210,7 @@ class WorkgroupListView(APIView):
 
         qs = Workgroup.objects.all()
         data = WorkgroupSerializer(qs, many=True).data
-        cache_set(CACHE_WORKGROUPS, data, timeout=300)  # ۵ دقیقه
+        cache_set(CACHE_WORKGROUPS, data, timeout=300)
         return Response(data)
 
 
@@ -286,7 +300,7 @@ class AdminStatsView(APIView):
                 for c in circle_programs
             ],
         }
-        cache_set(CACHE_ADMIN_STATS, data, timeout=60)  # ۱ دقیقه
+        cache_set(CACHE_ADMIN_STATS, data, timeout=60)
         return Response(data)
 
 

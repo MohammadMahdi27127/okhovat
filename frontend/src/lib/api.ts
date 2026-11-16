@@ -29,8 +29,11 @@ export function getUser() {
 async function request(path: string, options: RequestInit = {}) {
   const token = getToken()
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
+  }
+  // فقط اگر body رشته JSON است Content-Type بگذار
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json'
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -62,7 +65,9 @@ export async function login(groupCode: string, password: string) {
 }
 
 export async function getMe() {
-  return request('/auth/me/')
+  const user = await request('/auth/me/')
+  saveUser(user)
+  return user
 }
 
 export async function changePassword(oldPassword: string, newPassword: string) {
@@ -70,6 +75,36 @@ export async function changePassword(oldPassword: string, newPassword: string) {
     method: 'POST',
     body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
   })
+}
+
+export async function forgotPassword(groupCode: string) {
+  return request('/auth/forgot-password/', {
+    method: 'POST',
+    body: JSON.stringify({ group_code: groupCode }),
+  })
+}
+
+export async function resetPassword(groupCode: string, code: string, newPassword: string) {
+  const data = await request('/auth/reset-password/', {
+    method: 'POST',
+    body: JSON.stringify({ group_code: groupCode, code, new_password: newPassword }),
+  })
+  if (data.access) {
+    setTokens(data.access, data.refresh)
+    saveUser(data.user)
+  }
+  return data
+}
+
+export async function uploadAvatar(file: File) {
+  const form = new FormData()
+  form.append('avatar', file)
+  const data = await request('/auth/avatar/', {
+    method: 'POST',
+    body: form,
+  })
+  if (data.user) saveUser(data.user)
+  return data
 }
 
 // Posts
@@ -87,10 +122,27 @@ export async function createPost(data: {
   post_type?: string
   related_ring?: number
   related_workgroup?: number
+  media?: File | null
 }) {
+  if (data.media) {
+    const form = new FormData()
+    if (data.title) form.append('title', data.title)
+    form.append('content', data.content)
+    if (data.post_type) form.append('post_type', data.post_type)
+    if (data.related_ring) form.append('related_ring', String(data.related_ring))
+    if (data.related_workgroup) form.append('related_workgroup', String(data.related_workgroup))
+    form.append('media', data.media)
+    return request('/posts/', { method: 'POST', body: form })
+  }
   return request('/posts/', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      title: data.title,
+      content: data.content,
+      post_type: data.post_type,
+      related_ring: data.related_ring,
+      related_workgroup: data.related_workgroup,
+    }),
   })
 }
 
@@ -142,6 +194,25 @@ export async function getWorkgroups() {
   return request('/workgroups/')
 }
 
+export async function getWorkgroupDetail(slug: string) {
+  return request(`/workgroups/${slug}/`)
+}
+
+export async function createWorkgroupContent(
+  slug: string,
+  data: { title?: string; body?: string; data?: object; media?: File | null }
+) {
+  const form = new FormData()
+  if (data.title) form.append('title', data.title)
+  if (data.body) form.append('body', data.body)
+  if (data.data) form.append('data', JSON.stringify(data.data))
+  if (data.media) form.append('media', data.media)
+  return request(`/workgroups/${slug}/content/`, {
+    method: 'POST',
+    body: form,
+  })
+}
+
 // Users
 export async function searchUsers(search?: string) {
   const q = search ? `?search=${encodeURIComponent(search)}` : ''
@@ -172,5 +243,5 @@ export async function trackInteraction(data: {
   return request('/interactions/', {
     method: 'POST',
     body: JSON.stringify(data),
-  }).catch(() => {}) // fire and forget
+  }).catch(() => {})
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Eye, EyeOff } from 'lucide-react'
+import { login } from '@/lib/api'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -26,17 +27,15 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     setError('')
     setLoading(true)
 
-    // فعلاً شبیه‌سازی لاگین
-    setTimeout(() => {
-      if (groupCode && password) {
-        // موفقیت‌آمیز فرض می‌کنیم
-        onLoginSuccess?.({ groupCode, fullName: 'کاربر آزمایشی' })
-        onClose()
-      } else {
-        setError('کد گروهی و رمز عبور الزامی است')
-      }
+    try {
+      const data = await login(groupCode, password)
+      onLoginSuccess?.(data.user)
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'خطا در ورود')
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -44,20 +43,18 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     setError('')
     setLoading(true)
 
+    // فعلاً شبیه‌سازی فراموشی رمز (اتصال به بله بعداً)
     setTimeout(() => {
       if (!otpSent) {
-        // ارسال کد فرضی
         setOtpSent(true)
         setLoading(false)
       } else {
-        // تأیید کد و تنظیم رمز جدید
         if (otp.length === 4 && newPassword) {
           setMode('login')
           setOtpSent(false)
           setOtp('')
           setNewPassword('')
           setError('')
-          // می‌تونی پیام موفقیت نشون بدی
         } else {
           setError('کد ۴ رقمی و رمز جدید را درست وارد کنید')
         }
@@ -70,7 +67,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -79,7 +75,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           />
 
-          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -87,7 +82,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
             transition={{ duration: 0.25 }}
             className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
           >
-            {/* Close button */}
             <button
               onClick={onClose}
               className="absolute top-4 left-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition z-10"
@@ -95,7 +89,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
               <X size={16} className="text-slate-600" />
             </button>
 
-            {/* Header */}
             <div className="pt-8 pb-4 text-center">
               <div className="w-16 h-16 mx-auto rounded-2xl bg-okhovat-600 flex items-center justify-center text-white text-2xl font-bold mb-3">
                 ا
@@ -105,7 +98,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
               </h2>
               <p className="text-sm text-slate-500 mt-1">
                 {mode === 'login'
-                  ? 'با کد گروهی و رمز حساب آزمایشی وارد شو'
+                  ? 'با کد گروهی و رمز عبور وارد شو'
                   : 'کد ۴ رقمی به آیدی بله شما ارسال می‌شود'}
               </p>
             </div>
@@ -160,28 +153,11 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setMode('forgot')
-                      setError('')
-                    }}
+                    onClick={() => { setMode('forgot'); setError('') }}
                     className="w-full text-sm text-okhovat-600 hover:text-okhovat-700 py-1"
                   >
                     رمز عبور را فراموش کردی؟
                   </button>
-
-                  <div className="pt-2 border-t border-slate-100 space-y-2">
-                    <p className="text-xs text-slate-400 text-center">این حساب برای تست امکانات است</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setGroupCode('demo')
-                        setPassword('1234')
-                      }}
-                      className="w-full text-sm border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 rounded-xl transition"
-                    >
-                      بررسی با نمای عضو عادی
-                    </button>
-                  </div>
                 </form>
               ) : (
                 <form onSubmit={handleForgot} className="space-y-4">
@@ -244,17 +220,11 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
                     </>
                   )}
 
-                  {error && (
-                    <p className="text-sm text-red-500 text-center">{error}</p>
-                  )}
+                  {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setMode('login')
-                      setOtpSent(false)
-                      setError('')
-                    }}
+                    onClick={() => { setMode('login'); setOtpSent(false); setError('') }}
                     className="w-full text-sm text-slate-500 hover:text-slate-700 py-1"
                   >
                     بازگشت به ورود

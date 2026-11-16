@@ -1,11 +1,22 @@
 from rest_framework import serializers
-from .models import User, Post, GrowthLog, UserInteraction, Ring, Workgroup
+from .models import (
+    User, Post, PostLike, PostComment, PostRecommendation,
+    GrowthLog, UserInteraction, Ring, Workgroup, CircleScoreLog
+)
 
 
 class RingSerializer(serializers.ModelSerializer):
+    members_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Ring
-        fields = ['id', 'name', 'ring_number', 'score']
+        fields = [
+            'id', 'name', 'ring_number', 'score', 'coach_score',
+            'attendance_avg', 'external_likes', 'rank', 'members_count'
+        ]
+
+    def get_members_count(self, obj):
+        return obj.members.count()
 
 
 class WorkgroupSerializer(serializers.ModelSerializer):
@@ -31,10 +42,17 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class UserBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'full_name', 'group_code', 'avatar']
+
+
 class PostSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = UserBriefSerializer(read_only=True)
     related_ring = RingSerializer(read_only=True)
     related_workgroup = WorkgroupSerializer(read_only=True)
+    is_liked = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -42,9 +60,30 @@ class PostSerializer(serializers.ModelSerializer):
             'id', 'user', 'title', 'content', 'media', 'post_type',
             'related_ring', 'related_workgroup',
             'is_trending', 'like_count', 'comment_count',
-            'created_at', 'updated_at'
+            'is_liked', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'like_count', 'comment_count', 'created_at', 'updated_at']
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return PostLike.objects.filter(post=obj, user=request.user).exists()
+        return False
+
+
+class PostCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Post
+        fields = ['title', 'content', 'media', 'post_type', 'related_ring', 'related_workgroup']
+
+
+class PostCommentSerializer(serializers.ModelSerializer):
+    user = UserBriefSerializer(read_only=True)
+
+    class Meta:
+        model = PostComment
+        fields = ['id', 'user', 'content', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
 
 
 class GrowthLogSerializer(serializers.ModelSerializer):
@@ -66,3 +105,15 @@ class UserInteractionSerializer(serializers.ModelSerializer):
             'element_type', 'element_id', 'action', 'metadata', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class CircleScoreLogSerializer(serializers.ModelSerializer):
+    ring_name = serializers.CharField(source='ring.name', read_only=True)
+
+    class Meta:
+        model = CircleScoreLog
+        fields = [
+            'id', 'ring', 'ring_name', 'week_start',
+            'coach_score', 'attendance_avg', 'external_likes',
+            'total_score', 'rank', 'created_at'
+        ]

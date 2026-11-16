@@ -1,119 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   Home, FileText, BarChart3, User, Search,
   ChevronDown, Users, BookOpen, Dumbbell,
-  Activity, Calendar, Award, TrendingUp
+  Activity, Calendar, Loader2
 } from 'lucide-react'
-
-const members = [
-  { id: 1, name: 'علی محمدی', ring: 'سلمان', code: '1024' },
-  { id: 2, name: 'حسین احمدی', ring: 'مقداد', code: '1025' },
-  { id: 3, name: 'مهدی کریمی', ring: 'ابوذر', code: '1026' },
-  { id: 4, name: 'رضا موسوی', ring: 'سلمان', code: '1027' },
-  { id: 5, name: 'سجاد کاظمی', ring: 'عمار', code: '1028' },
-  { id: 6, name: 'امیر حسینی', ring: 'یاسر', code: '1029' },
-]
-
-const sampleGrowth = [
-  { date: '۱۴۰۳/۰۸/۲۵', sport: 1.5, study: 20, responsibility: 'هماهنگی جلسه', skill: 'مطالعه زبان', leisure: 'پیاده‌روی' },
-  { date: '۱۴۰۳/۰۸/۲۴', sport: 1.0, study: 15, responsibility: '—', skill: '—', leisure: 'خانواده' },
-  { date: '۱۴۰۳/۰۸/۲۳', sport: 2.0, study: 25, responsibility: 'پیگیری مصوبه', skill: 'خلاصه کتاب', leisure: '—' },
-]
-
-const rankingData = {
-  sport: [
-    { name: 'علی محمدی', value: 8.5 },
-    { name: 'حسین احمدی', value: 7.2 },
-    { name: 'مهدی کریمی', value: 6.8 },
-    { name: 'رضا موسوی', value: 5.5 },
-    { name: 'سجاد کاظمی', value: 4.1 },
-  ],
-  study: [
-    { name: 'مهدی کریمی', value: 120 },
-    { name: 'علی محمدی', value: 95 },
-    { name: 'رضا موسوی', value: 80 },
-    { name: 'حسین احمدی', value: 70 },
-    { name: 'امیر حسینی', value: 55 },
-  ],
-  attendance: [
-    { name: 'حلقه سلمان', value: 92 },
-    { name: 'حلقه مقداد', value: 85 },
-    { name: 'حلقه ابوذر', value: 78 },
-    { name: 'حلقه عمار', value: 74 },
-    { name: 'حلقه یاسر', value: 70 },
-  ],
-}
+import { searchUsers, getGrowthLogs } from '@/lib/api'
 
 export default function CoachPanel() {
   const [tab, setTab] = useState<'individual' | 'collective'>('individual')
   const [search, setSearch] = useState('')
-  const [selectedMember, setSelectedMember] = useState<typeof members[0] | null>(null)
+  const [members, setMembers] = useState<any[]>([])
+  const [selectedMember, setSelectedMember] = useState<any | null>(null)
+  const [growthLogs, setGrowthLogs] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loadingGrowth, setLoadingGrowth] = useState(false)
   const [selectedField, setSelectedField] = useState<'sport' | 'study' | 'attendance'>('sport')
-  const [viewMode, setViewMode] = useState<'members' | 'rings' | 'workgroups'>('members')
 
-  const filteredMembers = members.filter(m =>
-    m.name.includes(search) || m.code.includes(search)
-  )
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLoading(true)
+      searchUsers(search || undefined)
+        .then(data => setMembers(data.results || data || []))
+        .catch(() => setMembers([]))
+        .finally(() => setLoading(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  const selectMember = async (m: any) => {
+    setSelectedMember(m)
+    setLoadingGrowth(true)
+    try {
+      const data = await getGrowthLogs(m.id)
+      setGrowthLogs(data.results || data || [])
+    } catch {
+      setGrowthLogs([])
+    } finally {
+      setLoadingGrowth(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
-              م
-            </div>
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold text-sm">م</div>
             <div>
               <h1 className="font-bold text-slate-800 text-sm">پنل نظارتی مربی</h1>
-              <p className="text-[11px] text-slate-400">مربی احمدی</p>
+              <p className="text-[11px] text-slate-400">مشاهده و پیگیری اعضا</p>
             </div>
           </div>
-          <Link href="/" className="text-xs text-okhovat-600 hover:underline">
-            بازگشت به خانه
-          </Link>
+          <Link href="/" className="text-xs text-okhovat-600 hover:underline">بازگشت به خانه</Link>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-5">
-        {/* Tabs */}
         <div className="flex bg-white rounded-xl border border-slate-200 p-1 mb-5">
           <button
             onClick={() => setTab('individual')}
             className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition ${
-              tab === 'individual'
-                ? 'bg-okhovat-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+              tab === 'individual' ? 'bg-okhovat-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
-          >
-            نظرات فردی
-          </button>
+          >نظرات فردی</button>
           <button
             onClick={() => setTab('collective')}
             className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition ${
-              tab === 'collective'
-                ? 'bg-okhovat-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+              tab === 'collective' ? 'bg-okhovat-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
-          >
-            نظرات جمعی
-          </button>
+          >نظرات جمعی</button>
         </div>
 
         <AnimatePresence mode="wait">
           {tab === 'individual' ? (
-            <motion.div
-              key="individual"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="space-y-4"
-            >
-              {/* Search */}
+            <motion.div key="individual" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
               <div className="relative">
                 <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -124,89 +88,86 @@ export default function CoachPanel() {
                 />
               </div>
 
-              {/* Member list or detail */}
               {!selectedMember ? (
                 <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                  {filteredMembers.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setSelectedMember(m)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 text-right"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-okhovat-100 text-okhovat-700 flex items-center justify-center text-sm font-bold">
-                        {m.name[0]}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-800">{m.name}</p>
-                        <p className="text-xs text-slate-400">حلقه {m.ring} · {m.code}</p>
-                      </div>
-                      <ChevronDown size={16} className="text-slate-300 -rotate-90" />
-                    </button>
-                  ))}
+                  {loading ? (
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-okhovat-600" size={24} /></div>
+                  ) : members.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400 text-sm">عضوی یافت نشد</div>
+                  ) : (
+                    members.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => selectMember(m)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition border-b border-slate-50 last:border-0 text-right"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-okhovat-100 text-okhovat-700 flex items-center justify-center text-sm font-bold">
+                          {(m.full_name || '?')[0]}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-800">{m.full_name}</p>
+                          <p className="text-xs text-slate-400">{m.group_code}</p>
+                        </div>
+                        <ChevronDown size={16} className="text-slate-300 -rotate-90" />
+                      </button>
+                    ))
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <button
-                    onClick={() => setSelectedMember(null)}
-                    className="text-sm text-okhovat-600 hover:underline"
-                  >
+                  <button onClick={() => { setSelectedMember(null); setGrowthLogs([]) }} className="text-sm text-okhovat-600 hover:underline">
                     ← بازگشت به لیست
                   </button>
 
-                  {/* Member card */}
                   <div className="bg-white rounded-2xl border border-slate-100 p-5">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 rounded-xl bg-okhovat-600 text-white flex items-center justify-center text-lg font-bold">
-                        {selectedMember.name[0]}
+                        {(selectedMember.full_name || '?')[0]}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800">{selectedMember.name}</p>
-                        <p className="text-xs text-slate-400">حلقه {selectedMember.ring} · کد {selectedMember.code}</p>
+                        <p className="font-bold text-slate-800">{selectedMember.full_name}</p>
+                        <p className="text-xs text-slate-400">کد {selectedMember.group_code}</p>
                       </div>
                     </div>
 
                     <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
-                      <Activity size={14} />
-                      رشد فردی هفته اخیر
+                      <Activity size={14} /> رشد فردی
                     </h3>
-                    <div className="space-y-2">
-                      {sampleGrowth.map((g, i) => (
-                        <div key={i} className="bg-slate-50 rounded-xl p-3 text-xs">
-                          <p className="font-medium text-slate-600 mb-1">{g.date}</p>
-                          <div className="grid grid-cols-2 gap-1 text-slate-500">
-                            <span>ورزش: {g.sport} ساعت</span>
-                            <span>مطالعه: {g.study} صفحه</span>
-                            <span>مسئولیت: {g.responsibility}</span>
-                            <span>مهارت: {g.skill}</span>
+
+                    {loadingGrowth ? (
+                      <div className="flex justify-center py-6"><Loader2 className="animate-spin text-okhovat-600" size={20} /></div>
+                    ) : growthLogs.length === 0 ? (
+                      <p className="text-sm text-slate-400 py-4">ثبتی وجود ندارد</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {growthLogs.slice(0, 7).map((g: any) => (
+                          <div key={g.id} className="bg-slate-50 rounded-xl p-3 text-xs">
+                            <p className="font-medium text-slate-600 mb-1">{g.date}</p>
+                            <div className="grid grid-cols-2 gap-1 text-slate-500">
+                              <span>ورزش: {g.sport_hours} ساعت</span>
+                              <span>مطالعه: {g.study_pages} صفحه</span>
+                              {g.group_responsibility && <span className="col-span-2">مسئولیت: {g.group_responsibility}</span>}
+                              {g.personal_skill && <span className="col-span-2">مهارت: {g.personal_skill}</span>}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Quick links */}
                   <div className="grid grid-cols-2 gap-3">
                     <button className="bg-white border border-slate-100 rounded-xl p-3 text-sm text-slate-600 hover:border-okhovat-300 transition flex items-center gap-2">
-                      <Users size={16} className="text-okhovat-600" />
-                      جلسات کارگروه
+                      <Users size={16} className="text-okhovat-600" /> جلسات کارگروه
                     </button>
                     <button className="bg-white border border-slate-100 rounded-xl p-3 text-sm text-slate-600 hover:border-okhovat-300 transition flex items-center gap-2">
-                      <Calendar size={16} className="text-okhovat-600" />
-                      برنامه حلقه
+                      <Calendar size={16} className="text-okhovat-600" /> برنامه حلقه
                     </button>
                   </div>
                 </div>
               )}
             </motion.div>
           ) : (
-            <motion.div
-              key="collective"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="space-y-4"
-            >
-              {/* Field selector */}
+            <motion.div key="collective" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {[
                   { id: 'sport', label: 'ورزش', icon: <Dumbbell size={14} /> },
@@ -217,82 +178,25 @@ export default function CoachPanel() {
                     key={f.id}
                     onClick={() => setSelectedField(f.id as any)}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                      selectedField === f.id
-                        ? 'bg-okhovat-600 text-white'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:border-okhovat-300'
+                      selectedField === f.id ? 'bg-okhovat-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
                     }`}
                   >
-                    {f.icon}
-                    {f.label}
+                    {f.icon} {f.label}
                   </button>
                 ))}
               </div>
 
-              {/* View mode */}
-              <div className="flex gap-2">
-                {[
-                  { id: 'members', label: 'افراد' },
-                  { id: 'rings', label: 'حلقه‌ها' },
-                  { id: 'workgroups', label: 'کارگروه‌ها' },
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setViewMode(m.id as any)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                      viewMode === m.id
-                        ? 'bg-slate-800 text-white'
-                        : 'bg-white text-slate-500 border border-slate-200'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Chart-like ranking */}
               <div className="bg-white rounded-2xl border border-slate-100 p-5">
                 <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-1.5">
-                  <BarChart3 size={14} />
-                  رده‌بندی {
-                    selectedField === 'sport' ? 'ورزش' :
-                    selectedField === 'study' ? 'مطالعه' : 'حضور'
+                  <BarChart3 size={14} /> رده‌بندی {
+                    selectedField === 'sport' ? 'ورزش' : selectedField === 'study' ? 'مطالعه' : 'حضور'
                   }
                 </h3>
-
-                <div className="space-y-3">
-                  {(rankingData[selectedField] || []).map((item, i) => {
-                    const max = rankingData[selectedField][0]?.value || 1
-                    const pct = (item.value / max) * 100
-                    return (
-                      <div key={item.name} className="flex items-center gap-3">
-                        <span className={`w-5 text-xs font-bold ${
-                          i === 0 ? 'text-amber-500' : 'text-slate-400'
-                        }`}>
-                          {i + 1}
-                        </span>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-sm text-slate-700">{item.name}</span>
-                            <span className="text-xs font-medium text-slate-500">{item.value}</span>
-                          </div>
-                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
-                              transition={{ duration: 0.5, delay: i * 0.05 }}
-                              className={`h-full rounded-full ${
-                                i === 0 ? 'bg-amber-400' : 'bg-okhovat-500'
-                              }`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <p className="text-sm text-slate-400 text-center py-6">
+                  داده‌های رتبه‌بندی جمعی به‌زودی از API محاسبه می‌شود
+                </p>
               </div>
 
-              {/* Top / Bottom note */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
                   <p className="text-xs text-emerald-600 mb-0.5">۱۰ نفر اول</p>
@@ -308,7 +212,6 @@ export default function CoachPanel() {
         </AnimatePresence>
       </main>
 
-      {/* Bottom Nav - Telegram style capsule */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
         <div className="bg-white/90 backdrop-blur-md border border-slate-200 rounded-full shadow-lg px-2 py-1.5 flex items-center gap-1">
           <BottomNavItem href="/" icon={<Home size={18} />} label="خانه" />
@@ -323,12 +226,9 @@ export default function CoachPanel() {
 
 function BottomNavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
   return (
-    <Link
-      href={href}
-      className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-full transition ${
-        active ? 'text-okhovat-600' : 'text-slate-400 hover:text-slate-600'
-      }`}
-    >
+    <Link href={href} className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-full transition ${
+      active ? 'text-okhovat-600' : 'text-slate-400 hover:text-slate-600'
+    }`}>
       {icon}
       <span className="text-[10px] font-medium">{label}</span>
     </Link>

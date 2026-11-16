@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.db.models import Avg, Count, Q
 
 
 class UserManager(BaseUserManager):
@@ -31,16 +32,54 @@ class Ring(models.Model):
     """حلقه‌ها"""
     name = models.CharField(max_length=100, verbose_name='نام حلقه')
     ring_number = models.PositiveSmallIntegerField(unique=True, verbose_name='شماره حلقه')
-    score = models.FloatField(default=0, verbose_name='امتیاز حلقه')
+    score = models.FloatField(default=0, verbose_name='امتیاز کل حلقه')
+    coach_score = models.FloatField(default=0, verbose_name='آخرین امتیاز مربی')
+    attendance_avg = models.FloatField(default=0, verbose_name='میانگین درصد حضور')
+    external_likes = models.PositiveIntegerField(default=0, verbose_name='لایک‌های خارج از حلقه')
+    rank = models.PositiveSmallIntegerField(default=0, verbose_name='رتبه فعلی')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'حلقه'
         verbose_name_plural = 'حلقه‌ها'
-        ordering = ['ring_number']
+        ordering = ['rank', 'ring_number']
 
     def __str__(self):
         return f'حلقه {self.ring_number} - {self.name}'
+
+    def recalculate_score(self):
+        """
+        فرمول امتیاز:
+        (امتیاز مربی × ۲) + (میانگین حضور × ۲) + تعداد لایک‌های خارج از حلقه
+        """
+        self.score = (self.coach_score * 2) + (self.attendance_avg * 2) + self.external_likes
+        self.save(update_fields=['score', 'updated_at'])
+        return self.score
+
+    def update_attendance_avg(self):
+        avg = self.members.aggregate(avg=Avg('attendance_percentage'))['avg'] or 0
+        self.attendance_avg = round(avg, 1)
+        self.save(update_fields=['attendance_avg'])
+        self.recalculate_score()
+
+
+class CircleScoreLog(models.Model):
+    """تاریخچه امتیاز حلقه‌ها برای رتبه‌بندی هفتگی"""
+    ring = models.ForeignKey(Ring, on_delete=models.CASCADE, related_name='score_logs')
+    week_start = models.DateField(verbose_name='شروع هفته')
+    coach_score = models.FloatField(default=0)
+    attendance_avg = models.FloatField(default=0)
+    external_likes = models.PositiveIntegerField(default=0)
+    total_score = models.FloatField(default=0)
+    rank = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'لاگ امتیاز حلقه'
+        verbose_name_plural = 'لاگ‌های امتیاز حلقه'
+        ordering = ['-week_start', 'rank']
+        unique_together = ('ring', 'week_start')
 
 
 class Workgroup(models.Model):
@@ -150,6 +189,20 @@ class PostLike(models.Model):
     class Meta:
         unique_together = ('post', 'user')
         verbose_name = 'لایک پست'
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new:
+            # اگر پست از نوع برنامه حلقه باشد و لایک‌کننده عضو آن حلقه نباشد → امتیاز به حلقه
+            post = self.post
+            if post.post_type == 'circle_program' and post.related_ring:
+                liker_ring = self.user.ring
+                if liker_ring != post.related_ring:
+                    ring = post.related_ring
+                    ring.external_likes += 1
+                    ring.save(update_fields=['external_likes'])
+                    ring.recalculate_score()
 
 
 class PostComment(models.Model):

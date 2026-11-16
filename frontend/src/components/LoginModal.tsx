@@ -1,0 +1,270 @@
+'use client'
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Eye, EyeOff } from 'lucide-react'
+
+interface LoginModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onLoginSuccess?: (user: any) => void
+}
+
+export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
+  const [groupCode, setGroupCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [mode, setMode] = useState<'login' | 'forgot'>('login')
+  const [otp, setOtp] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    // فعلاً شبیه‌سازی لاگین
+    setTimeout(() => {
+      if (groupCode && password) {
+        // موفقیت‌آمیز فرض می‌کنیم
+        onLoginSuccess?.({ groupCode, fullName: 'کاربر آزمایشی' })
+        onClose()
+      } else {
+        setError('کد گروهی و رمز عبور الزامی است')
+      }
+      setLoading(false)
+    }, 800)
+  }
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    setTimeout(() => {
+      if (!otpSent) {
+        // ارسال کد فرضی
+        setOtpSent(true)
+        setLoading(false)
+      } else {
+        // تأیید کد و تنظیم رمز جدید
+        if (otp.length === 4 && newPassword) {
+          setMode('login')
+          setOtpSent(false)
+          setOtp('')
+          setNewPassword('')
+          setError('')
+          // می‌تونی پیام موفقیت نشون بدی
+        } else {
+          setError('کد ۴ رقمی و رمز جدید را درست وارد کنید')
+        }
+        setLoading(false)
+      }
+    }, 800)
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.25 }}
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+          >
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 left-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition z-10"
+            >
+              <X size={16} className="text-slate-600" />
+            </button>
+
+            {/* Header */}
+            <div className="pt-8 pb-4 text-center">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-okhovat-600 flex items-center justify-center text-white text-2xl font-bold mb-3">
+                ا
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">
+                {mode === 'login' ? 'ورود به اخوت' : 'بازیابی رمز عبور'}
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {mode === 'login'
+                  ? 'با کد گروهی و رمز حساب آزمایشی وارد شو'
+                  : 'کد ۴ رقمی به آیدی بله شما ارسال می‌شود'}
+              </p>
+            </div>
+
+            <div className="px-6 pb-6">
+              {mode === 'login' ? (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">کد گروهی</label>
+                    <input
+                      type="text"
+                      value={groupCode}
+                      onChange={(e) => setGroupCode(e.target.value)}
+                      placeholder="کد گروهی"
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500 focus:border-transparent"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">رمز عبور</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="رمز عبور"
+                        className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500 focus:border-transparent pl-12"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <p className="text-sm text-red-500 text-center">{error}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-okhovat-600 hover:bg-okhovat-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl transition"
+                  >
+                    {loading ? 'در حال ورود...' : 'ورود به اخوت'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot')
+                      setError('')
+                    }}
+                    className="w-full text-sm text-okhovat-600 hover:text-okhovat-700 py-1"
+                  >
+                    رمز عبور را فراموش کردی؟
+                  </button>
+
+                  <div className="pt-2 border-t border-slate-100 space-y-2">
+                    <p className="text-xs text-slate-400 text-center">این حساب برای تست امکانات است</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGroupCode('demo')
+                        setPassword('1234')
+                      }}
+                      className="w-full text-sm border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 rounded-xl transition"
+                    >
+                      بررسی با نمای عضو عادی
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleForgot} className="space-y-4">
+                  {!otpSent ? (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">کد گروهی</label>
+                        <input
+                          type="text"
+                          value={groupCode}
+                          onChange={(e) => setGroupCode(e.target.value)}
+                          placeholder="کد گروهی خود را وارد کنید"
+                          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
+                          dir="ltr"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading || !groupCode}
+                        className="w-full bg-okhovat-600 hover:bg-okhovat-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl transition"
+                      >
+                        {loading ? 'در حال ارسال...' : 'ارسال کد به بله'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-3 bg-okhovat-50 rounded-xl text-sm text-okhovat-800 text-center">
+                        کد ۴ رقمی به آیدی بله مرتبط با این کد گروهی ارسال شد.
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">کد ۴ رقمی</label>
+                        <input
+                          type="text"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.slice(0, 4))}
+                          placeholder="----"
+                          maxLength={4}
+                          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-okhovat-500"
+                          dir="ltr"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">رمز جدید</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="رمز جدید را وارد کنید"
+                          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
+                          dir="ltr"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-okhovat-600 hover:bg-okhovat-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl transition"
+                      >
+                        {loading ? 'در حال ثبت...' : 'تنظیم رمز جدید و ورود'}
+                      </button>
+                    </>
+                  )}
+
+                  {error && (
+                    <p className="text-sm text-red-500 text-center">{error}</p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login')
+                      setOtpSent(false)
+                      setError('')
+                    }}
+                    className="w-full text-sm text-slate-500 hover:text-slate-700 py-1"
+                  >
+                    بازگشت به ورود
+                  </button>
+                </form>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  )
+}

@@ -2,6 +2,7 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.throttling import AnonRateThrottle
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import timedelta
@@ -18,8 +19,14 @@ from .serializers import (
 )
 
 
+class LoginRateThrottle(AnonRateThrottle):
+    """محدودیت تلاش لاگین: ۵ بار در دقیقه"""
+    rate = '5/min'
+
+
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         group_code = request.data.get('group_code')
@@ -82,6 +89,18 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+    def update(self, request, *args, **kwargs):
+        post = self.get_object()
+        if not (getattr(request.user, 'is_admin', False) or post.user == request.user):
+            return Response({'detail': 'اجازه ویرایش ندارید'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        post = self.get_object()
+        if not (getattr(request.user, 'is_admin', False) or post.user == request.user):
+            return Response({'detail': 'اجازه ویرایش ندارید'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
     def destroy(self, request, *args, **kwargs):
         post = self.get_object()
         if not (getattr(request.user, 'is_admin', False) or post.user == request.user):
@@ -90,6 +109,8 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class PostLikeToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request, pk):
         try:
             post = Post.objects.get(pk=pk)
@@ -110,6 +131,7 @@ class PostLikeToggleView(APIView):
 
 class PostCommentListCreateView(generics.ListCreateAPIView):
     serializer_class = PostCommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
         return PostComment.objects.filter(post_id=self.kwargs['pk']).select_related('user')
@@ -123,6 +145,7 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
 
 class GrowthLogListCreateView(generics.ListCreateAPIView):
     serializer_class = GrowthLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user_id = self.request.query_params.get('user')
@@ -148,6 +171,7 @@ class WorkgroupListView(generics.ListAPIView):
 
 class UserListView(generics.ListAPIView):
     serializer_class = UserBriefSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = User.objects.filter(is_active=True)
@@ -158,6 +182,8 @@ class UserListView(generics.ListAPIView):
 
 
 class SuspendUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request, pk):
         if not getattr(request.user, 'is_admin', False):
             return Response({'detail': 'فقط ادمین'}, status=status.HTTP_403_FORBIDDEN)
@@ -177,6 +203,8 @@ class SuspendUserView(APIView):
 
 
 class AdminStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         if not getattr(request.user, 'is_admin', False):
             return Response({'detail': 'فقط ادمین'}, status=status.HTTP_403_FORBIDDEN)
@@ -235,6 +263,8 @@ class UserInteractionCreateView(generics.CreateAPIView):
 
 
 class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
         old = request.data.get('old_password')
         new = request.data.get('new_password')
@@ -244,6 +274,9 @@ class ChangePasswordView(APIView):
 
         if not request.user.check_password(old):
             return Response({'detail': 'رمز فعلی اشتباه است'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new) < 6:
+            return Response({'detail': 'رمز جدید باید حداقل ۶ کاراکتر باشد'}, status=status.HTTP_400_BAD_REQUEST)
 
         request.user.set_password(new)
         request.user.save()

@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Preloader from '@/components/Preloader'
-import { Home, FileText, PlusCircle, TrendingUp, User } from 'lucide-react'
+import LoginModal from '@/components/LoginModal'
+import { Home, FileText, PlusCircle, TrendingUp, User, LogIn } from 'lucide-react'
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true)
+  const [showLogin, setShowLogin] = useState(false)
 
   if (loading) {
     return <Preloader onComplete={() => setLoading(false)} />
@@ -37,9 +39,18 @@ export default function HomePage() {
           <NavItem href="/profile" icon={<User size={20} />} label="پروفایل من" />
         </nav>
 
-        <div className="p-4 border-t border-slate-100 text-xs text-slate-500">
-          <p>گروه اخوت</p>
-          <p className="mt-1">۶۰ همراه، یک مسیر مشترک</p>
+        <div className="p-4 border-t border-slate-100 space-y-3">
+          <button
+            onClick={() => setShowLogin(true)}
+            className="w-full flex items-center justify-center gap-2 bg-okhovat-600 hover:bg-okhovat-700 text-white text-sm font-medium py-2.5 rounded-xl transition"
+          >
+            <LogIn size={16} />
+            ورود به اخوت
+          </button>
+          <div className="text-xs text-slate-500">
+            <p>گروه اخوت</p>
+            <p className="mt-1">۶۰ همراه، یک مسیر مشترک</p>
+          </div>
         </div>
       </aside>
 
@@ -62,9 +73,17 @@ export default function HomePage() {
                 <p className="text-okhovat-100 leading-relaxed">
                   به سامانهٔ ما خوش آمدی. اگر کمکی خواستی بهم بگو.
                 </p>
-                <button className="mt-4 bg-amber-400 hover:bg-amber-300 text-okhovat-900 px-4 py-2 rounded-lg text-sm font-medium transition">
-                  گفت‌وگو با همراه اخوت
-                </button>
+                <div className="mt-4 flex gap-3">
+                  <button className="bg-amber-400 hover:bg-amber-300 text-okhovat-900 px-4 py-2 rounded-lg text-sm font-medium transition">
+                    گفت‌وگو با همراه اخوت
+                  </button>
+                  <button
+                    onClick={() => setShowLogin(true)}
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                  >
+                    ورود به حساب
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -78,6 +97,16 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onLoginSuccess={() => {
+          // بعداً state کاربر رو ست می‌کنیم
+          setShowLogin(false)
+        }}
+      />
     </div>
   )
 }

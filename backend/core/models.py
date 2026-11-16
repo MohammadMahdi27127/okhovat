@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg
+import random
 
 
 class UserManager(BaseUserManager):
@@ -29,7 +29,6 @@ class UserManager(BaseUserManager):
 
 
 class Ring(models.Model):
-    """حلقه‌ها"""
     name = models.CharField(max_length=100, verbose_name='نام حلقه')
     ring_number = models.PositiveSmallIntegerField(unique=True, verbose_name='شماره حلقه')
     score = models.FloatField(default=0, verbose_name='امتیاز کل حلقه')
@@ -49,10 +48,6 @@ class Ring(models.Model):
         return f'حلقه {self.ring_number} - {self.name}'
 
     def recalculate_score(self):
-        """
-        فرمول امتیاز:
-        (امتیاز مربی × ۲) + (میانگین حضور × ۲) + تعداد لایک‌های خارج از حلقه
-        """
         self.score = (self.coach_score * 2) + (self.attendance_avg * 2) + self.external_likes
         self.save(update_fields=['score', 'updated_at'])
         return self.score
@@ -65,7 +60,6 @@ class Ring(models.Model):
 
 
 class CircleScoreLog(models.Model):
-    """تاریخچه امتیاز حلقه‌ها برای رتبه‌بندی هفتگی"""
     ring = models.ForeignKey(Ring, on_delete=models.CASCADE, related_name='score_logs')
     week_start = models.DateField(verbose_name='شروع هفته')
     coach_score = models.FloatField(default=0)
@@ -83,7 +77,6 @@ class CircleScoreLog(models.Model):
 
 
 class Workgroup(models.Model):
-    """کارگروه‌ها"""
     name = models.CharField(max_length=100, verbose_name='نام کارگروه')
     slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
     description = models.TextField(blank=True, verbose_name='توضیحات')
@@ -98,14 +91,29 @@ class Workgroup(models.Model):
         return self.name
 
 
+class WorkgroupContent(models.Model):
+    """محتوای قابل نمایش در صفحه کارگروه (ثبت‌شده توسط مسئول)"""
+    workgroup = models.ForeignKey(Workgroup, on_delete=models.CASCADE, related_name='contents')
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
+    title = models.CharField(max_length=200, blank=True)
+    body = models.TextField(blank=True)
+    media = models.FileField(upload_to='workgroups/', null=True, blank=True)
+    data = models.JSONField(default=dict, blank=True)  # لیست افراد، هزینه‌ها و ...
+    is_published = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'محتوای کارگروه'
+
+
 class User(AbstractBaseUser, PermissionsMixin):
-    """کاربر سیستم اخوت"""
     group_code = models.CharField(max_length=50, unique=True, verbose_name='کد گروهی')
     full_name = models.CharField(max_length=150, verbose_name='نام و نام خانوادگی')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name='آواتار')
     bale_id = models.CharField(max_length=100, blank=True, null=True, verbose_name='آیدی بله')
 
-    # نقش‌ها
     is_admin = models.BooleanField(default=False, verbose_name='مدیر سایت')
     is_coach = models.BooleanField(default=False, verbose_name='مربی')
     is_ring_leader = models.BooleanField(default=False, verbose_name='سر حلقه')
@@ -113,11 +121,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_resolution_officer = models.BooleanField(default=False, verbose_name='مسئول مصوبات')
     is_concerned_member = models.BooleanField(default=False, verbose_name='عضو دغدغه‌مندان')
 
-    # روابط
     ring = models.ForeignKey(Ring, on_delete=models.SET_NULL, null=True, blank=True, related_name='members', verbose_name='حلقه')
     workgroup = models.ForeignKey(Workgroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='members', verbose_name='کارگروه')
 
-    # وضعیت
     attendance_percentage = models.FloatField(default=0, verbose_name='درصد حضور')
     activity_level = models.PositiveSmallIntegerField(default=1, verbose_name='سطح فعالیت')
     suspended_until = models.DateTimeField(null=True, blank=True, verbose_name='تعلیق تا تاریخ')
@@ -146,8 +152,28 @@ class User(AbstractBaseUser, PermissionsMixin):
         return False
 
 
+class PasswordResetOTP(models.Model):
+    """کد ۴ رقمی بازیابی رمز از طریق بله"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_otps')
+    code = models.CharField(max_length=4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @classmethod
+    def generate_for_user(cls, user):
+        code = f'{random.randint(0, 9999):04d}'
+        return cls.objects.create(user=user, code=code)
+
+    def is_valid(self):
+        if self.is_used:
+            return False
+        return timezone.now() - self.created_at < timezone.timedelta(minutes=5)
+
+
 class Post(models.Model):
-    """پست‌های سایت"""
     POST_TYPES = (
         ('normal', 'عادی'),
         ('circle_program', 'برنامه حلقه'),
@@ -194,7 +220,6 @@ class PostLike(models.Model):
         is_new = self.pk is None
         super().save(*args, **kwargs)
         if is_new:
-            # اگر پست از نوع برنامه حلقه باشد و لایک‌کننده عضو آن حلقه نباشد → امتیاز به حلقه
             post = self.post
             if post.post_type == 'circle_program' and post.related_ring:
                 liker_ring = self.user.ring
@@ -217,7 +242,6 @@ class PostComment(models.Model):
 
 
 class PostRecommendation(models.Model):
-    """پیشنهاد پست به مربی"""
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='recommendations')
     recommended_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recommendations_made')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -227,7 +251,6 @@ class PostRecommendation(models.Model):
 
 
 class GrowthLog(models.Model):
-    """فرم روزانه رشد فردی"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='growth_logs')
     date = models.DateField(verbose_name='تاریخ')
     sport_hours = models.FloatField(default=0, verbose_name='ساعت ورزش')
@@ -246,7 +269,6 @@ class GrowthLog(models.Model):
 
 
 class UserInteraction(models.Model):
-    """ثبت کلیک‌ها و رفتار کاربر برای آنالیتیکس"""
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='interactions')
     session_id = models.CharField(max_length=100, blank=True, verbose_name='شناسه نشست')
     page = models.CharField(max_length=50, verbose_name='صفحه')
@@ -264,7 +286,6 @@ class UserInteraction(models.Model):
 
 
 class Reel(models.Model):
-    """آماده‌سازی برای ریلز در آپدیت‌های بعدی"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reels')
     caption = models.TextField(blank=True)
     video = models.FileField(upload_to='reels/')
@@ -281,7 +302,6 @@ class Reel(models.Model):
 
 
 class AIUsageLog(models.Model):
-    """لاگ استفاده از هوش مصنوعی (بدون ذخیره چت)"""
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=50, default='chat')
     tokens_used = models.PositiveIntegerField(default=0)

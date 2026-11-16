@@ -1,4 +1,5 @@
 import os
+import warnings
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -8,8 +9,28 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production-okhovat-2026')
-
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
+
+# هشدار امنیتی برای production
+if not DEBUG:
+    if SECRET_KEY.startswith('django-insecure') or SECRET_KEY == 'django-insecure-change-this-in-production-okhovat-2026':
+        raise RuntimeError(
+            '⛔ SECURITY ERROR: SECRET_KEY ناامن است. '
+            'قبل از اجرای production یک SECRET_KEY قوی در .env تنظیم کنید.'
+        )
+else:
+    if SECRET_KEY.startswith('django-insecure') or 'change-this' in SECRET_KEY:
+        warnings.warn(
+            '⚠️  SECRET_KEY پیش‌فرض استفاده می‌شود. در production حتماً آن را تغییر دهید.',
+            UserWarning,
+            stacklevel=1,
+        )
+    if DEBUG:
+        warnings.warn(
+            '⚠️  DEBUG=True است. در production حتماً DEBUG=False قرار دهید.',
+            UserWarning,
+            stacklevel=1,
+        )
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
@@ -62,9 +83,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # ============================================================
 # Database Configuration
 # ============================================================
-# فعلاً SQLite فعال است برای تست آسان
-# برای استفاده از PostgreSQL، USE_POSTGRES=True را در .env قرار دهید
-
 USE_POSTGRES = os.getenv('USE_POSTGRES', 'False') == 'True'
 
 if USE_POSTGRES:
@@ -79,7 +97,6 @@ if USE_POSTGRES:
         }
     }
 else:
-    # SQLite - فعال برای تست
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -125,6 +142,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',
+        'user': '120/min',
+    },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 }

@@ -17,6 +17,11 @@ from .serializers import (
     PostCommentSerializer, GrowthLogSerializer, UserInteractionSerializer,
     RingSerializer, WorkgroupSerializer
 )
+from .cache_utils import (
+    cache_get, cache_set,
+    CACHE_RINGS, CACHE_WORKGROUPS, CACHE_ADMIN_STATS,
+    invalidate_posts_cache, invalidate_rings_cache, invalidate_admin_stats,
+)
 
 
 class LoginRateThrottle(AnonRateThrottle):
@@ -77,6 +82,8 @@ class PostListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        invalidate_posts_cache()
+        invalidate_admin_stats()
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
@@ -93,19 +100,26 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         post = self.get_object()
         if not (getattr(request.user, 'is_admin', False) or post.user == request.user):
             return Response({'detail': 'اجازه ویرایش ندارید'}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
+        invalidate_posts_cache()
+        return response
 
     def partial_update(self, request, *args, **kwargs):
         post = self.get_object()
         if not (getattr(request.user, 'is_admin', False) or post.user == request.user):
             return Response({'detail': 'اجازه ویرایش ندارید'}, status=status.HTTP_403_FORBIDDEN)
-        return super().partial_update(request, *args, **kwargs)
+        response = super().partial_update(request, *args, **kwargs)
+        invalidate_posts_cache()
+        return response
 
     def destroy(self, request, *args, **kwargs):
         post = self.get_object()
         if not (getattr(request.user, 'is_admin', False) or post.user == request.user):
             return Response({'detail': 'اجازه حذف ندارید'}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+        response = super().destroy(request, *args, **kwargs)
+        invalidate_posts_cache()
+        invalidate_admin_stats()
+        return response
 
 
 class PostLikeToggleView(APIView):
@@ -155,18 +169,35 @@ class GrowthLogListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        invalidate_admin_stats()
 
 
-class RingListView(generics.ListAPIView):
-    queryset = Ring.objects.all().order_by('rank', '-score')
-    serializer_class = RingSerializer
+class RingListView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    def get(self, request):
+        cached = cache_get(CACHE_RINGS)
+        if cached is not None:
+            return Response(cached)
 
-class WorkgroupListView(generics.ListAPIView):
-    queryset = Workgroup.objects.all()
-    serializer_class = WorkgroupSerializer
+        qs = Ring.objects.all().order_by('rank', '-score')
+        data = RingSerializer(qs, many=True).data
+        cache_set(CACHE_RINGS, data, timeout=120)  # ۲ دقیقه
+        return Response(data)
+
+
+class WorkgroupListView(APIView):
     permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        cached = cache_get(CACHE_WORKGROUPS)
+        if cached is not None:
+            return Response(cached)
+
+        qs = Workgroup.objects.all()
+        data = WorkgroupSerializer(qs, many=True).data
+        cache_set(CACHE_WORKGROUPS, data, timeout=300)  # ۵ دقیقه
+        return Response(data)
 
 
 class UserListView(generics.ListAPIView):
@@ -209,6 +240,10 @@ class AdminStatsView(APIView):
         if not getattr(request.user, 'is_admin', False):
             return Response({'detail': 'فقط ادمین'}, status=status.HTTP_403_FORBIDDEN)
 
+        cached = cache_get(CACHE_ADMIN_STATS)
+        if cached is not None:
+            return Response(cached)
+
         week_ago = timezone.now().date() - timedelta(days=7)
 
         growth_users = GrowthLog.objects.filter(date__gte=week_ago).values('user').annotate(
@@ -239,7 +274,7 @@ class AdminStatsView(APIView):
             created_at__gte=timezone.now() - timedelta(days=7)
         ).values('related_ring__name').annotate(count=Count('id'))
 
-        return Response({
+        data = {
             'growth_filled': filled,
             'growth_empty': empty,
             'workgroup_meetings': [
@@ -250,7 +285,9 @@ class AdminStatsView(APIView):
                 {'name': c['related_ring__name'] or 'نامشخص', 'count': c['count']}
                 for c in circle_programs
             ],
-        })
+        }
+        cache_set(CACHE_ADMIN_STATS, data, timeout=60)  # ۱ دقیقه
+        return Response(data)
 
 
 class UserInteractionCreateView(generics.CreateAPIView):

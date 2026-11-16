@@ -8,6 +8,9 @@ urlpatterns = [
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/me/', views.MeView.as_view(), name='me'),
     path('auth/change-password/', views.ChangePasswordView.as_view(), name='change-password'),
+    path('auth/forgot-password/', views.ForgotPasswordView.as_view(), name='forgot-password'),
+    path('auth/reset-password/', views.ResetPasswordView.as_view(), name='reset-password'),
+    path('auth/avatar/', views.AvatarUploadView.as_view(), name='avatar-upload'),
 
     # Posts
     path('posts/', views.PostListCreateView.as_view(), name='post-list'),
@@ -21,6 +24,8 @@ urlpatterns = [
     # Rings & Workgroups
     path('rings/', views.RingListView.as_view(), name='ring-list'),
     path('workgroups/', views.WorkgroupListView.as_view(), name='workgroup-list'),
+    path('workgroups/<slug:slug>/', views.WorkgroupDetailView.as_view(), name='workgroup-detail'),
+    path('workgroups/<slug:slug>/content/', views.WorkgroupContentCreateView.as_view(), name='workgroup-content'),
 
     # Users
     path('users/', views.UserListView.as_view(), name='user-list'),

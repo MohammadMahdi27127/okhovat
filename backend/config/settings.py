@@ -104,6 +104,40 @@ else:
         }
     }
 
+# ============================================================
+# Cache Configuration (Redis با fallback به حافظه محلی)
+# ============================================================
+USE_REDIS = os.getenv('USE_REDIS', 'False') == 'True'
+
+if USE_REDIS:
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'IGNORE_EXCEPTIONS': True,  # اگر Redis قطع شد، اپ کرش نکند
+            },
+            'KEY_PREFIX': 'okhovat',
+            'TIMEOUT': 300,  # ۵ دقیقه پیش‌فرض
+        }
+    }
+    # استفاده از Redis برای session (اختیاری)
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+else:
+    # بدون Redis → کش در حافظه محلی (مناسب تست)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'okhovat-local',
+            'TIMEOUT': 300,
+        }
+    }
+
 AUTH_USER_MODEL = 'core.User'
 
 AUTH_PASSWORD_VALIDATORS = [

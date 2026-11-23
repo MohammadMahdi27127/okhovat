@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Home, FileText, PlusCircle, TrendingUp, User,
-  LayoutDashboard, MessageSquare, LogOut
+  LayoutDashboard
 } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import clsx from 'clsx'
@@ -36,7 +36,6 @@ export default function Sidebar({ role = 'member', onLoginClick, userName }: Sid
 
   return (
     <aside className="hidden md:flex w-64 bg-white dark:bg-okhovat-950 border-l border-okhovat-100 dark:border-okhovat-800 flex-col fixed right-0 top-0 bottom-0 z-40">
-      {/* Logo */}
       <div className="p-5 border-b border-okhovat-100 dark:border-okhovat-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-okhovat-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
@@ -49,7 +48,6 @@ export default function Sidebar({ role = 'member', onLoginClick, userName }: Sid
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {links.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || (href !== '/' && pathname.startsWith(href))
@@ -71,19 +69,25 @@ export default function Sidebar({ role = 'member', onLoginClick, userName }: Sid
         })}
       </nav>
 
-      {/* Footer */}
       <div className="p-4 border-t border-okhovat-100 dark:border-okhovat-800 space-y-3">
         <div className="flex items-center justify-between">
           <ThemeToggle />
           {userName ? (
             <span className="text-xs text-okhovat-600 dark:text-okhovat-400 truncate max-w-[140px]">{userName}</span>
-          ) : (
+          ) : onLoginClick ? (
             <button
               onClick={onLoginClick}
               className="text-xs text-okhovat-600 dark:text-okhovat-400 hover:text-okhovat-500"
             >
               ورود
             </button>
+          ) : (
+            <Link
+              href="/login"
+              className="text-xs text-okhovat-600 dark:text-okhovat-400 hover:text-okhovat-500"
+            >
+              ورود
+            </Link>
           )}
         </div>
         <div className="text-xs text-okhovat-500 dark:text-okhovat-500">

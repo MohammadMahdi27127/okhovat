@@ -19,7 +19,6 @@ export default function HomePage() {
   return (
     <AppShell onLoginClick={() => setShowLogin(true)}>
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Page title */}
         <motion.h1
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -28,7 +27,6 @@ export default function HomePage() {
           خانهٔ اخوت
         </motion.h1>
 
-        {/* Welcome Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -54,21 +52,19 @@ export default function HomePage() {
                   <MessageCircle size={16} />
                   گفت‌وگو با همراه اخوت
                 </Link>
-                <button
-                  onClick={() => setShowLogin(true)}
+                <Link
+                  href="/login"
                   className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-medium transition"
                 >
                   ورود به حساب
-                </button>
+                </Link>
               </div>
             </div>
           </div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Main column */}
           <div className="lg:col-span-2 space-y-5">
-            {/* Weekly programs */}
             <Section
               title="برنامه‌های هفته"
               icon={<Calendar size={18} />}
@@ -86,7 +82,6 @@ export default function HomePage() {
               />
             </Section>
 
-            {/* Workgroup content */}
             <Section
               title="محتوای کارگروه‌ها"
               icon={<BookOpen size={18} />}
@@ -100,7 +95,6 @@ export default function HomePage() {
             </Section>
           </div>
 
-          {/* Side column (desktop) */}
           <div className="space-y-5">
             <Section
               title="گزارش روزانه"
@@ -121,7 +115,7 @@ export default function HomePage() {
               emptyMessage="داده‌ای موجود نیست."
             >
               <div className="space-y-2">
-                {[ 'سلمان', 'ابوذر', 'مقداد' ].map((name, i) => (
+                {['سلمان', 'ابوذر', 'مقداد'].map((name, i) => (
                   <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-okhovat-50/80 dark:bg-okhovat-900/60">
                     <span className="text-sm text-okhovat-800 dark:text-okhovat-200">{name}</span>
                     <span className="text-xs font-medium text-okhovat-500">{92 - i * 5}٪</span>

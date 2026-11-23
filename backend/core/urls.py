@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 from . import views_follow
+from . import views_growth
 
 urlpatterns = [
     # Auth
@@ -21,8 +22,8 @@ urlpatterns = [
     path('posts/<int:pk>/recommend/', views.PostRecommendToggleView.as_view(), name='post-recommend'),
     path('posts/<int:pk>/bookmark/', views.PostBookmarkToggleView.as_view(), name='post-bookmark'),
 
-    # Growth
-    path('growth/', views.GrowthLogListCreateView.as_view(), name='growth-list'),
+    # Growth (multipart + skill_document)
+    path('growth/', views_growth.GrowthLogListCreateView.as_view(), name='growth-list'),
 
     # Rings & Workgroups
     path('rings/', views.RingListView.as_view(), name='ring-list'),

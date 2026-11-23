@@ -127,6 +127,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     activity_level = models.PositiveSmallIntegerField(default=1, verbose_name='سطح فعالیت')
     suspended_until = models.DateTimeField(null=True, blank=True, verbose_name='تعلیق تا تاریخ')
 
+    sport_plan = models.TextField(blank=True, default='', verbose_name='برنامه ورزشی')
+    book_plan = models.TextField(blank=True, default='', verbose_name='برنامه کتاب')
+
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -152,7 +155,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Follow(models.Model):
-    """دنبال کردن کاربر"""
     follower = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='following_set', verbose_name='دنبال‌کننده'
     )
@@ -286,6 +288,7 @@ class GrowthLog(models.Model):
     group_responsibility = models.TextField(blank=True, verbose_name='مسئولیت گروهی')
     personal_skill = models.TextField(blank=True, verbose_name='مهارت شخصی')
     leisure = models.TextField(blank=True, verbose_name='اوقات فراغت')
+    skill_document = models.FileField(upload_to='growth/', null=True, blank=True, verbose_name='مستند مهارت')
     extra_data = models.JSONField(default=dict, blank=True, verbose_name='اطلاعات اضافی')
     created_at = models.DateTimeField(auto_now_add=True)
 

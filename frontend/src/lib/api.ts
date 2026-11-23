@@ -185,6 +185,8 @@ export async function createGrowthLog(data: {
   group_responsibility?: string
   personal_skill?: string
   leisure?: string
+  publish_to_posts?: boolean
+  extra_data?: Record<string, unknown>
 }) {
   return request('/growth/', {
     method: 'POST',

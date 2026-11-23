@@ -83,7 +83,6 @@ class PostListCreateView(generics.ListCreateAPIView):
         if post_type:
             qs = qs.filter(post_type=post_type)
         if self.request.query_params.get('trending') == '1':
-            # ترند یا پیشنهادی به مربی
             qs = qs.filter(Q(is_trending=True) | Q(recommendations__isnull=False)).distinct()
         return qs
 
@@ -216,6 +215,27 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
         post.save(update_fields=['comment_count'])
 
 
+def _truthy(val):
+    return val in (True, 'true', 'True', '1', 1, 'yes')
+
+
+def _growth_post_body(log: GrowthLog) -> str:
+    parts = []
+    if log.sport_hours:
+        parts.append(f'🏋️ ورزش: {log.sport_hours} ساعت')
+    if log.study_pages:
+        parts.append(f'📚 مطالعه: {log.study_pages} صفحه')
+    if log.personal_skill:
+        parts.append(f'💡 مهارت: {log.personal_skill}')
+    if log.group_responsibility:
+        parts.append(f'👥 مسئولیت گروهی: {log.group_responsibility}')
+    if log.leisure:
+        parts.append(f'☕ اوقات فراغت: {log.leisure}')
+    if not parts:
+        parts.append('گزارش رشد امروز ثبت شد.')
+    return '\n'.join(parts)
+
+
 class GrowthLogListCreateView(generics.ListCreateAPIView):
     serializer_class = GrowthLogSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -226,9 +246,59 @@ class GrowthLogListCreateView(generics.ListCreateAPIView):
             return GrowthLog.objects.filter(user_id=user_id)
         return GrowthLog.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = request.user
+        date = data.get('date')
+
+        extra = data.get('extra_data') or {}
+        if not isinstance(extra, dict):
+            extra = {}
+        publish = _truthy(request.data.get('publish_to_posts')) or _truthy(
+            request.data.get('publish')
+        ) or _truthy(extra.get('publish_to_posts'))
+        extra['publish_to_posts'] = publish
+
+        log, created = GrowthLog.objects.update_or_create(
+            user=user,
+            date=date,
+            defaults={
+                'sport_hours': data.get('sport_hours') or 0,
+                'study_pages': data.get('study_pages') or 0,
+                'group_responsibility': data.get('group_responsibility') or '',
+                'personal_skill': data.get('personal_skill') or '',
+                'leisure': data.get('leisure') or '',
+                'extra_data': extra,
+            },
+        )
+
+        published_post = None
+        if publish:
+            body = _growth_post_body(log)
+            title = f'گزارش رشد · {log.date}'
+            published_post = Post.objects.create(
+                user=user,
+                title=title,
+                content=body,
+                post_type='growth',
+            )
+            invalidate_posts_cache()
+
         invalidate_admin_stats()
+
+        out = GrowthLogSerializer(log).data
+        response_data = {
+            **out,
+            'created': created,
+            'published_to_posts': bool(published_post),
+            'post_id': published_post.id if published_post else None,
+        }
+        return Response(
+            response_data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class RingListView(APIView):

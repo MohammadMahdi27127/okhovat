@@ -222,6 +222,31 @@ export async function createWorkgroupContent(
   })
 }
 
+// Rankings
+export async function getMemberRankings(params?: {
+  field?: 'sport' | 'study' | 'attendance'
+  days?: number
+  limit?: number
+}) {
+  const q = new URLSearchParams()
+  if (params?.field) q.set('field', params.field)
+  if (params?.days) q.set('days', String(params.days))
+  if (params?.limit) q.set('limit', String(params.limit))
+  const query = q.toString() ? `?${q}` : ''
+  return request(`/rankings/members/${query}`)
+}
+
+export async function updateCoachScore(data: {
+  target: 'ring' | 'workgroup'
+  id: number
+  score: number
+}) {
+  return request('/rankings/score/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
 // Users
 export async function searchUsers(search?: string) {
   const q = search ? `?search=${encodeURIComponent(search)}` : ''

@@ -33,9 +33,11 @@ urlpatterns = [
     path('rankings/members/', views.MemberRankingView.as_view(), name='member-rankings'),
     path('rankings/score/', views.CoachScoreUpdateView.as_view(), name='coach-score'),
 
-    # Users
+    # Users & Follow
     path('users/', views.UserListView.as_view(), name='user-list'),
+    path('users/<int:pk>/follow/', views.FollowToggleView.as_view(), name='user-follow'),
     path('users/<int:pk>/suspend/', views.SuspendUserView.as_view(), name='user-suspend'),
+    path('following/', views.FollowingListView.as_view(), name='following-list'),
 
     # Coach messages
     path('messages/', views.CoachMessageListCreateView.as_view(), name='message-list'),

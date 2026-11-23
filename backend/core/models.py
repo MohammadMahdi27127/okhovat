@@ -151,6 +151,25 @@ class User(AbstractBaseUser, PermissionsMixin):
         return False
 
 
+class Follow(models.Model):
+    """دنبال کردن کاربر"""
+    follower = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='following_set', verbose_name='دنبال‌کننده'
+    )
+    following = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='followers_set', verbose_name='دنبال‌شونده'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('follower', 'following')
+        verbose_name = 'دنبال کردن'
+        verbose_name_plural = 'دنبال‌کردن‌ها'
+
+    def __str__(self):
+        return f'{self.follower} → {self.following}'
+
+
 class PasswordResetOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_otps')
     code = models.CharField(max_length=4)

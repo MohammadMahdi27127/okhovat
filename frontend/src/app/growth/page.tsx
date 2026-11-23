@@ -2,47 +2,58 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { 
-  Home, FileText, PlusCircle, TrendingUp, User,
-  Dumbbell, BookOpen, Users, Lightbulb, Coffee,
-  Calendar, CheckCircle2, Loader2
+import AppShell from '@/components/AppShell'
+import {
+  Dumbbell, BookOpen, Lightbulb, Users, Coffee,
+  Calendar, CheckCircle2, Loader2, Upload
 } from 'lucide-react'
 import { createGrowthLog } from '@/lib/api'
+
+const leisureOptions = ['خواب', 'ورزش', 'بازی', 'شبکه‌های اجتماعی']
 
 export default function GrowthPage() {
   const [sport, setSport] = useState(0)
   const [study, setStudy] = useState(0)
+  const [skillTopic, setSkillTopic] = useState('')
+  const [skillLearn, setSkillLearn] = useState('')
+  const [skillPractice, setSkillPractice] = useState('')
   const [responsibility, setResponsibility] = useState('')
-  const [skill, setSkill] = useState('')
-  const [leisure, setLeisure] = useState('')
+  const [leisure, setLeisure] = useState<string[]>([])
+  const [publish, setPublish] = useState(false)
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+
+  const toggleLeisure = (item: string) => {
+    setLeisure((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0]
       await createGrowthLog({
         date: today,
         sport_hours: sport,
         study_pages: study,
         group_responsibility: responsibility,
-        personal_skill: skill,
-        leisure: leisure,
+        personal_skill: [skillTopic, skillLearn, skillPractice].filter(Boolean).join(' | '),
+        leisure: leisure.join('، '),
       })
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 3000)
-      // reset form
       setSport(0)
       setStudy(0)
+      setSkillTopic('')
+      setSkillLearn('')
+      setSkillPractice('')
       setResponsibility('')
-      setSkill('')
-      setLeisure('')
+      setLeisure([])
+      setPublish(false)
     } catch (err: any) {
       setError(err.message || 'خطا در ثبت. ابتدا وارد شوید.')
     } finally {
@@ -54,171 +65,185 @@ export default function GrowthPage() {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <aside className="w-64 bg-white border-l border-slate-200 flex flex-col fixed right-0 top-0 bottom-0 z-40">
-        <div className="p-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-okhovat-600 flex items-center justify-center text-white font-bold text-lg">ا</div>
-            <div>
-              <h1 className="font-bold text-okhovat-800 text-lg">اخوت</h1>
-              <p className="text-xs text-slate-500">کنار هم، رو به رشد</p>
-            </div>
+    <AppShell>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          {/* Header */}
+          <div className="mb-5">
+            <h1 className="text-xl font-bold text-okhovat-800 dark:text-okhovat-100">رشد فردی</h1>
+            <p className="text-sm text-okhovat-500 dark:text-okhovat-400 mt-1 flex items-center gap-1.5">
+              <Calendar size={14} />
+              {todayLabel}
+            </p>
           </div>
-        </div>
-        <nav className="flex-1 p-3 space-y-1">
-          <NavItem href="/" icon={<Home size={20} />} label="خانهٔ اخوت" />
-          <NavItem href="/posts" icon={<FileText size={20} />} label="پست‌ها" />
-          <NavItem href="/new-post" icon={<PlusCircle size={20} />} label="پست جدید" />
-          <NavItem href="/growth" icon={<TrendingUp size={20} />} label="رشد فردی" active />
-          <NavItem href="/profile" icon={<User size={20} />} label="پروفایل من" />
-        </nav>
-        <div className="p-4 border-t border-slate-100 text-xs text-slate-500">
-          <p>گروه اخوت</p>
-          <p className="mt-1">۶۰ همراه، یک مسیر مشترک</p>
-        </div>
-      </aside>
 
-      <main className="flex-1 mr-64">
-        <div className="max-w-2xl mx-auto py-6 px-4">
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-slate-800">رشد فردی</h1>
-              <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-                <Calendar size={14} />
-                {todayLabel}
-              </p>
+          {/* Quick links */}
+          <div className="flex gap-2 mb-5">
+            <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-900/40">
+              <Dumbbell size={13} /> برنامه ورزشی
+            </button>
+            <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/40">
+              <BookOpen size={13} /> کتاب
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="card overflow-hidden">
+            <div className="p-5 border-b border-okhovat-100 dark:border-okhovat-800 bg-okhovat-50/50 dark:bg-okhovat-900/40">
+              <h2 className="font-semibold text-okhovat-800 dark:text-okhovat-100">امروزت چطور گذشت؟</h2>
+              <p className="text-sm text-okhovat-500 dark:text-okhovat-400 mt-0.5">ثبت ورزش، مطالعه، مهارت و فعالیت‌های روزانه</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-100 bg-gradient-to-l from-okhovat-50 to-white">
-                <h2 className="font-semibold text-okhovat-800">امروزت چطور گذشت؟</h2>
-                <p className="text-sm text-slate-500 mt-0.5">ثبت ورزش، مطالعه، مهارت و فعالیت‌های روزانه</p>
+            <div className="p-5 space-y-5">
+              {/* Sport & Study boxes */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 border border-okhovat-100 dark:border-okhovat-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+                      <Dumbbell size={15} className="text-orange-600" />
+                    </div>
+                    <span className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">ورزش</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min="0" step="0.5" value={sport}
+                      onChange={(e) => setSport(Number(e.target.value))}
+                      className="input-field"
+                    />
+                    <span className="text-xs text-okhovat-500 whitespace-nowrap">ساعت</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 border border-okhovat-100 dark:border-okhovat-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                      <BookOpen size={15} className="text-blue-600" />
+                    </div>
+                    <span className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">مطالعه</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min="0" value={study}
+                      onChange={(e) => setStudy(Number(e.target.value))}
+                      className="input-field"
+                    />
+                    <span className="text-xs text-okhovat-500 whitespace-nowrap">صفحه</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="p-5 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                        <Dumbbell size={16} className="text-orange-600" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700">ورزش</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number" min="0" step="0.5" value={sport}
-                        onChange={(e) => setSport(Number(e.target.value))}
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
-                      />
-                      <span className="text-xs text-slate-500 whitespace-nowrap">ساعت</span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <BookOpen size={16} className="text-blue-600" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700">مطالعه</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number" min="0" value={study}
-                        onChange={(e) => setStudy(Number(e.target.value))}
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
-                      />
-                      <span className="text-xs text-slate-500 whitespace-nowrap">صفحه</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-                    <Users size={16} className="text-okhovat-600" /> مسئولیت گروهی
-                  </label>
-                  <textarea
-                    value={responsibility}
-                    onChange={(e) => setResponsibility(e.target.value)}
-                    placeholder="امروز چه مسئولیتی در گروه انجام دادی؟"
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500 resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-                    <Lightbulb size={16} className="text-amber-500" /> مهارت شخصی
-                  </label>
-                  <textarea
-                    value={skill}
-                    onChange={(e) => setSkill(e.target.value)}
-                    placeholder="چه مهارتی تمرین یا یاد گرفتی؟"
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500 resize-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-                    <Coffee size={16} className="text-purple-500" /> اوقات فراغت
-                  </label>
-                  <textarea
-                    value={leisure}
-                    onChange={(e) => setLeisure(e.target.value)}
-                    placeholder="اوقات فراغتت چطور گذشت؟"
-                    rows={2}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500 resize-none"
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-sm text-red-500 text-center">{error}</p>
-                )}
-
+              {/* Skill section */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-okhovat-800 dark:text-okhovat-100">
+                  <Lightbulb size={16} className="text-amber-500" /> مهارت
+                </label>
+                <input
+                  value={skillTopic}
+                  onChange={(e) => setSkillTopic(e.target.value)}
+                  placeholder="عنوان مبحث"
+                  className="input-field"
+                />
+                <textarea
+                  value={skillLearn}
+                  onChange={(e) => setSkillLearn(e.target.value)}
+                  placeholder="چه چیزی یاد گرفتی؟"
+                  rows={2}
+                  className="input-field resize-none"
+                />
+                <textarea
+                  value={skillPractice}
+                  onChange={(e) => setSkillPractice(e.target.value)}
+                  placeholder="چه تمرینی انجام دادی؟"
+                  rows={2}
+                  className="input-field resize-none"
+                />
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-okhovat-600 hover:bg-okhovat-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl transition flex items-center justify-center gap-2"
+                  type="button"
+                  className="flex items-center gap-1.5 text-xs text-okhovat-600 dark:text-okhovat-400 hover:text-okhovat-500"
                 >
-                  {loading ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : submitted ? (
-                    <><CheckCircle2 size={18} /> ثبت شد!</>
-                  ) : (
-                    'ثبت رشد امروز'
-                  )}
+                  <Upload size={13} /> بارگذاری مستندات
                 </button>
-
-                <p className="text-xs text-center text-slate-400">
-                  بعد از ثبت، خلاصه‌ای از گزارشت در صفحه پست‌ها نمایش داده می‌شود.
-                </p>
               </div>
-            </form>
 
-            <div className="mt-5 p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800">
-              💡 هر شب تا ساعت ۲۲ فرم را پر کن. در غیر این صورت یک یادآوری از طریق بله برات ارسال می‌شود.
+              {/* Group responsibility */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-okhovat-800 dark:text-okhovat-100 mb-2">
+                  <Users size={16} className="text-okhovat-500" /> مسئولیت گروهی
+                </label>
+                <textarea
+                  value={responsibility}
+                  onChange={(e) => setResponsibility(e.target.value)}
+                  placeholder="امروز چه مسئولیتی در گروه انجام دادی؟"
+                  rows={2}
+                  className="input-field resize-none"
+                />
+              </div>
+
+              {/* Leisure choices */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-okhovat-800 dark:text-okhovat-100 mb-2">
+                  <Coffee size={16} className="text-purple-500" /> اوقات فراغت
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {leisureOptions.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleLeisure(item)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        leisure.includes(item)
+                          ? 'bg-okhovat-500 text-white border-okhovat-500'
+                          : 'bg-white dark:bg-okhovat-900 text-okhovat-600 dark:text-okhovat-300 border-okhovat-200 dark:border-okhovat-700 hover:border-okhovat-400'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Publish checkbox - default OFF for new reports */}
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 border border-okhovat-100 dark:border-okhovat-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={publish}
+                  onChange={(e) => setPublish(e.target.checked)}
+                  className="mt-0.5 rounded text-okhovat-500 focus:ring-okhovat-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">گزارشم در پست‌ها منتشر شود</p>
+                  <p className="text-xs text-okhovat-500 dark:text-okhovat-400 mt-0.5">برای گزارش جدید به‌صورت پیش‌فرض خاموش است</p>
+                </div>
+              </label>
+
+              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {loading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : submitted ? (
+                  <><CheckCircle2 size={18} /> ثبت شد!</>
+                ) : (
+                  'ثبت رشد امروز'
+                )}
+              </button>
             </div>
-          </motion.div>
-        </div>
-      </main>
-    </div>
-  )
-}
+          </form>
 
-function NavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-        active ? 'bg-okhovat-50 text-okhovat-700' : 'text-slate-600 hover:bg-slate-50'
-      }`}
-    >
-      {icon}
-      {label}
-    </Link>
+          {/* Workgroup forms placeholder */}
+          <div className="mt-5 card p-5">
+            <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100 mb-2">فرم‌های کارگروه</h3>
+            <p className="text-sm text-okhovat-500 dark:text-okhovat-400">فرم‌های مربوط به کارگروه شما اینجا نمایش داده می‌شوند.</p>
+          </div>
+        </motion.div>
+      </div>
+    </AppShell>
   )
 }

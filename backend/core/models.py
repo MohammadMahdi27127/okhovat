@@ -168,9 +168,6 @@ class Follow(models.Model):
         verbose_name = 'دنبال کردن'
         verbose_name_plural = 'دنبال‌کردن‌ها'
 
-    def __str__(self):
-        return f'{self.follower} → {self.following}'
-
 
 class PasswordResetOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_otps')
@@ -222,9 +219,6 @@ class Post(models.Model):
         verbose_name_plural = 'پست‌ها'
         ordering = ['-created_at']
 
-    def __str__(self):
-        return f'{self.user.full_name} - {self.post_type} - {self.created_at.date()}'
-
 
 class PostLike(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='likes')
@@ -233,7 +227,6 @@ class PostLike(models.Model):
 
     class Meta:
         unique_together = ('post', 'user')
-        verbose_name = 'لایک پست'
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -257,7 +250,6 @@ class PostComment(models.Model):
 
     class Meta:
         ordering = ['created_at']
-        verbose_name = 'کامنت'
 
 
 class PostRecommendation(models.Model):
@@ -267,7 +259,6 @@ class PostRecommendation(models.Model):
 
     class Meta:
         unique_together = ('post', 'recommended_by')
-        verbose_name = 'پیشنهاد به مربی'
 
 
 class PostBookmark(models.Model):
@@ -277,7 +268,6 @@ class PostBookmark(models.Model):
 
     class Meta:
         unique_together = ('post', 'user')
-        verbose_name = 'ذخیره پست'
 
 
 class GrowthLog(models.Model):
@@ -295,24 +285,20 @@ class GrowthLog(models.Model):
     class Meta:
         unique_together = ('user', 'date')
         ordering = ['-date']
-        verbose_name = 'گزارش رشد فردی'
-        verbose_name_plural = 'گزارش‌های رشد فردی'
 
 
 class UserInteraction(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='interactions')
-    session_id = models.CharField(max_length=100, blank=True, verbose_name='شناسه نشست')
-    page = models.CharField(max_length=50, verbose_name='صفحه')
-    section = models.CharField(max_length=100, blank=True, verbose_name='بخش')
-    element_type = models.CharField(max_length=50, blank=True, verbose_name='نوع المان')
-    element_id = models.CharField(max_length=100, blank=True, verbose_name='شناسه المان')
-    action = models.CharField(max_length=30, default='click', verbose_name='عملیات')
+    session_id = models.CharField(max_length=100, blank=True)
+    page = models.CharField(max_length=50)
+    section = models.CharField(max_length=100, blank=True)
+    element_type = models.CharField(max_length=50, blank=True)
+    element_id = models.CharField(max_length=100, blank=True)
+    action = models.CharField(max_length=30, default='click')
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'تعامل کاربر'
-        verbose_name_plural = 'تعاملات کاربران'
         ordering = ['-created_at']
 
 
@@ -329,7 +315,6 @@ class Reel(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'ریل'
 
 
 class AIUsageLog(models.Model):
@@ -338,25 +323,33 @@ class AIUsageLog(models.Model):
     tokens_used = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        verbose_name = 'لاگ هوش مصنوعی'
-
 
 class CoachMessage(models.Model):
-    sender = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='messages_sent', verbose_name='فرستنده'
-    )
-    recipient = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='messages_received', verbose_name='گیرنده'
-    )
-    body = models.TextField(verbose_name='متن پیام')
-    is_read = models.BooleanField(default=False, verbose_name='خوانده‌شده')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_sent')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_received')
+    body = models.TextField()
+    is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'پیام مربی'
-        verbose_name_plural = 'پیام‌های مربی'
 
-    def __str__(self):
-        return f'{self.sender} → {self.recipient}: {self.body[:40]}'
+
+class Notification(models.Model):
+    KIND_CHOICES = (
+        ('message', 'پیام مربی'),
+        ('recommend', 'پیشنهاد پست'),
+        ('system', 'سیستم'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='system')
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True)
+    link = models.CharField(max_length=300, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'اعلان'
+        verbose_name_plural = 'اعلان‌ها'

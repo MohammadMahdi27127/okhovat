@@ -28,6 +28,8 @@ class WorkgroupSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     ring = RingSerializer(read_only=True)
     workgroup = WorkgroupSerializer(read_only=True)
+    posts_count = serializers.SerializerMethodField()
+    growth_logs_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -37,9 +39,16 @@ class UserSerializer(serializers.ModelSerializer):
             'is_resolution_officer', 'is_concerned_member',
             'ring', 'workgroup',
             'attendance_percentage', 'activity_level',
+            'posts_count', 'growth_logs_count',
             'is_active', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'posts_count', 'growth_logs_count']
+
+    def get_posts_count(self, obj):
+        return obj.posts.count()
+
+    def get_growth_logs_count(self, obj):
+        return obj.growth_logs.count()
 
 
 class UserBriefSerializer(serializers.ModelSerializer):

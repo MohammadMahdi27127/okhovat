@@ -194,7 +194,7 @@ class PostBookmarkToggleView(APIView):
         except Post.DoesNotExist:
             return Response({'detail': 'پست یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
-        bm, created = PostBookmarkPostBookmark.objects.get_or_create(post=post, user=request.user)
+        bm, created = PostBookmark.objects.get_or_create(post=post, user=request.user)
         if not created:
             bm.delete()
             return Response({'bookmarked': False})
@@ -412,7 +412,7 @@ class CoachScoreUpdateView(APIView):
         if not (getattr(request.user, 'is_coach', False) or getattr(request.user, 'is_admin', False)):
             return Response({'detail': 'فقط مربی یا ادمین'}, status=status.HTTP_403_FORBIDDEN)
 
-        target = request.data.get('target')  # ring | workgroup
+        target = request.data.get('target')
         try:
             target_id = int(request.data.get('id'))
         except (TypeError, ValueError):
@@ -431,7 +431,6 @@ class CoachScoreUpdateView(APIView):
                 return Response({'detail': 'حلقه یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
             ring.coach_score = score
             ring.recalculate_score()
-            # به‌روزرسانی رتبه همه حلقه‌ها
             all_rings = list(Ring.objects.order_by('-score', 'ring_number'))
             for i, r in enumerate(all_rings, start=1):
                 if r.rank != i:
@@ -458,8 +457,6 @@ class CoachScoreUpdateView(APIView):
             wg.score = score
             wg.save(update_fields=['score'])
             try:
-                from .cache_utils import CACHE_WORKGROUPS
-                # invalidate by rewriting empty — if helper missing, ignore
                 cache_set(CACHE_WORKGROUPS, None, timeout=1)
             except Exception:
                 pass

@@ -5,6 +5,11 @@ function getToken(): string | null {
   return localStorage.getItem('access_token')
 }
 
+function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('refresh_token')
+}
+
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem('access_token', access)
   localStorage.setItem('refresh_token', refresh)
@@ -26,7 +31,31 @@ export function getUser() {
   return u ? JSON.parse(u) : null
 }
 
-async function request(path: string, options: RequestInit = {}) {
+let refreshPromise: Promise<boolean> | null = null
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refresh = getRefreshToken()
+  if (!refresh) return false
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+    })
+    if (!res.ok) return false
+    const data = await res.json()
+    if (data.access) {
+      localStorage.setItem('access_token', data.access)
+      if (data.refresh) localStorage.setItem('refresh_token', data.refresh)
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
+async function request(path: string, options: RequestInit = {}, retried = false): Promise<any> {
   const token = getToken()
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
@@ -40,6 +69,19 @@ async function request(path: string, options: RequestInit = {}) {
     ...options,
     headers,
   })
+
+  if (res.status === 401 && !retried && !path.includes('/auth/login') && !path.includes('/auth/refresh')) {
+    if (!refreshPromise) {
+      refreshPromise = tryRefreshToken().finally(() => {
+        refreshPromise = null
+      })
+    }
+    const ok = await refreshPromise
+    if (ok) {
+      return request(path, options, true)
+    }
+    clearTokens()
+  }
 
   if (res.status === 401) {
     clearTokens()
@@ -69,7 +111,12 @@ export async function getMe() {
   return user
 }
 
-export async function updateMe(data: { sport_plan?: string; book_plan?: string; full_name?: string; bale_id?: string }) {
+export async function updateMe(data: {
+  sport_plan?: string
+  book_plan?: string
+  full_name?: string
+  bale_id?: string
+}) {
   const user = await request('/auth/me/', {
     method: 'PATCH',
     body: JSON.stringify(data),
@@ -107,10 +154,7 @@ export async function resetPassword(groupCode: string, code: string, newPassword
 export async function uploadAvatar(file: File) {
   const form = new FormData()
   form.append('avatar', file)
-  const data = await request('/auth/avatar/', {
-    method: 'POST',
-    body: form,
-  })
+  const data = await request('/auth/avatar/', { method: 'POST', body: form })
   if (data.user) saveUser(data.user)
   return data
 }
@@ -121,12 +165,14 @@ export async function getPosts(params?: {
   trending?: boolean
   following?: boolean
   user?: number
+  q?: string
 }) {
   const q = new URLSearchParams()
   if (params?.type) q.set('type', params.type)
   if (params?.trending) q.set('trending', '1')
   if (params?.following) q.set('following', '1')
   if (params?.user) q.set('user', String(params.user))
+  if (params?.q) q.set('q', params.q)
   const query = q.toString() ? `?${q}` : ''
   return request(`/posts/${query}`)
 }
@@ -227,10 +273,7 @@ export async function createGrowthLog(data: {
     form.append('skill_document', data.skill_document)
     return request('/growth/', { method: 'POST', body: form })
   }
-  return request('/growth/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
+  return request('/growth/', { method: 'POST', body: JSON.stringify(data) })
 }
 
 // Rings & Workgroups
@@ -255,10 +298,7 @@ export async function createWorkgroupContent(
   if (data.body) form.append('body', data.body)
   if (data.data) form.append('data', JSON.stringify(data.data))
   if (data.media) form.append('media', data.media)
-  return request(`/workgroups/${slug}/content/`, {
-    method: 'POST',
-    body: form,
-  })
+  return request(`/workgroups/${slug}/content/`, { method: 'POST', body: form })
 }
 
 // Rankings
@@ -317,6 +357,20 @@ export async function sendCoachMessage(recipientId: number, body: string) {
 
 export async function markMessageRead(id: number) {
   return request(`/messages/${id}/read/`, { method: 'POST' })
+}
+
+// Notifications
+export async function getNotifications() {
+  return request('/notifications/')
+}
+
+export async function getUnreadNotificationCount() {
+  return request('/notifications/unread-count/')
+}
+
+export async function markNotificationRead(id?: number) {
+  if (id) return request(`/notifications/${id}/read/`, { method: 'POST' })
+  return request('/notifications/read-all/', { method: 'POST' })
 }
 
 // Admin

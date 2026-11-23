@@ -5,6 +5,7 @@ from . import views_follow
 from . import views_growth
 from . import views_posts
 from . import views_notify
+from . import views_hooks
 
 urlpatterns = [
     path('auth/login/', views.LoginView.as_view(), name='login'),
@@ -19,7 +20,7 @@ urlpatterns = [
     path('posts/<int:pk>/', views.PostDetailView.as_view(), name='post-detail'),
     path('posts/<int:pk>/like/', views.PostLikeToggleView.as_view(), name='post-like'),
     path('posts/<int:pk>/comments/', views.PostCommentListCreateView.as_view(), name='post-comments'),
-    path('posts/<int:pk>/recommend/', views.PostRecommendToggleView.as_view(), name='post-recommend'),
+    path('posts/<int:pk>/recommend/', views_hooks.PostRecommendToggleView.as_view(), name='post-recommend'),
     path('posts/<int:pk>/bookmark/', views.PostBookmarkToggleView.as_view(), name='post-bookmark'),
 
     path('growth/', views_growth.GrowthLogListCreateView.as_view(), name='growth-list'),
@@ -37,7 +38,7 @@ urlpatterns = [
     path('users/<int:pk>/suspend/', views.SuspendUserView.as_view(), name='user-suspend'),
     path('following/', views_follow.FollowingListView.as_view(), name='following-list'),
 
-    path('messages/', views.CoachMessageListCreateView.as_view(), name='message-list'),
+    path('messages/', views_hooks.CoachMessageListCreateView.as_view(), name='message-list'),
     path('messages/<int:pk>/read/', views.CoachMessageMarkReadView.as_view(), name='message-read'),
 
     path('notifications/', views_notify.NotificationListView.as_view(), name='notification-list'),

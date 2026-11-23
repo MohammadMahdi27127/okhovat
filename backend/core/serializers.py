@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     User, Post, PostLike, PostComment, PostRecommendation, PostBookmark,
     GrowthLog, UserInteraction, Ring, Workgroup, CircleScoreLog,
-    CoachMessage,
+    CoachMessage, Follow,
 )
 
 
@@ -31,6 +31,8 @@ class UserSerializer(serializers.ModelSerializer):
     workgroup = WorkgroupSerializer(read_only=True)
     posts_count = serializers.SerializerMethodField()
     growth_logs_count = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -41,9 +43,13 @@ class UserSerializer(serializers.ModelSerializer):
             'ring', 'workgroup',
             'attendance_percentage', 'activity_level',
             'posts_count', 'growth_logs_count',
+            'followers_count', 'following_count',
             'is_active', 'created_at'
         ]
-        read_only_fields = ['id', 'created_at', 'posts_count', 'growth_logs_count']
+        read_only_fields = [
+            'id', 'created_at', 'posts_count', 'growth_logs_count',
+            'followers_count', 'following_count',
+        ]
 
     def get_posts_count(self, obj):
         return obj.posts.count()
@@ -51,11 +57,25 @@ class UserSerializer(serializers.ModelSerializer):
     def get_growth_logs_count(self, obj):
         return obj.growth_logs.count()
 
+    def get_followers_count(self, obj):
+        return obj.followers_set.count()
+
+    def get_following_count(self, obj):
+        return obj.following_set.count()
+
 
 class UserBriefSerializer(serializers.ModelSerializer):
+    is_following = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'group_code', 'avatar']
+        fields = ['id', 'full_name', 'group_code', 'avatar', 'is_following']
+
+    def get_is_following(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.id != obj.id:
+            return Follow.objects.filter(follower=request.user, following=obj).exists()
+        return False
 
 
 class PostSerializer(serializers.ModelSerializer):

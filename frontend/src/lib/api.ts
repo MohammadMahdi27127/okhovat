@@ -69,6 +69,15 @@ export async function getMe() {
   return user
 }
 
+export async function updateMe(data: { sport_plan?: string; book_plan?: string; full_name?: string; bale_id?: string }) {
+  const user = await request('/auth/me/', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  saveUser(user)
+  return user
+}
+
 export async function changePassword(oldPassword: string, newPassword: string) {
   return request('/auth/change-password/', {
     method: 'POST',
@@ -107,11 +116,17 @@ export async function uploadAvatar(file: File) {
 }
 
 // Posts
-export async function getPosts(params?: { type?: string; trending?: boolean; following?: boolean }) {
+export async function getPosts(params?: {
+  type?: string
+  trending?: boolean
+  following?: boolean
+  user?: number
+}) {
   const q = new URLSearchParams()
   if (params?.type) q.set('type', params.type)
   if (params?.trending) q.set('trending', '1')
   if (params?.following) q.set('following', '1')
+  if (params?.user) q.set('user', String(params.user))
   const query = q.toString() ? `?${q}` : ''
   return request(`/posts/${query}`)
 }
@@ -197,7 +212,21 @@ export async function createGrowthLog(data: {
   leisure?: string
   publish_to_posts?: boolean
   extra_data?: Record<string, unknown>
+  skill_document?: File | null
 }) {
+  if (data.skill_document) {
+    const form = new FormData()
+    form.append('date', data.date)
+    if (data.sport_hours != null) form.append('sport_hours', String(data.sport_hours))
+    if (data.study_pages != null) form.append('study_pages', String(data.study_pages))
+    if (data.group_responsibility) form.append('group_responsibility', data.group_responsibility)
+    if (data.personal_skill) form.append('personal_skill', data.personal_skill)
+    if (data.leisure) form.append('leisure', data.leisure)
+    if (data.publish_to_posts) form.append('publish_to_posts', 'true')
+    if (data.extra_data) form.append('extra_data', JSON.stringify(data.extra_data))
+    form.append('skill_document', data.skill_document)
+    return request('/growth/', { method: 'POST', body: form })
+  }
   return request('/growth/', {
     method: 'POST',
     body: JSON.stringify(data),

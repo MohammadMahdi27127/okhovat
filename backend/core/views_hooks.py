@@ -2,6 +2,7 @@ from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
+from django.db.models import Q
 
 from .models import Post, PostRecommendation, CoachMessage, User
 from .serializers import CoachMessageSerializer
@@ -34,11 +35,8 @@ class PostRecommendToggleView(APIView):
             post.is_trending = True
             post.save(update_fields=['is_trending'])
 
-        # اعلان برای مربی‌ها
-        coaches = User.objects.filter(is_active=True).filter(
-            models_q_coach()
-        )
-        for coach in coaches[:20]:
+        coaches = User.objects.filter(is_active=True).filter(Q(is_coach=True) | Q(is_admin=True))[:20]
+        for coach in coaches:
             notify(
                 coach,
                 'recommend',
@@ -48,11 +46,6 @@ class PostRecommendToggleView(APIView):
             )
 
         return Response({'recommended': True, 'recommendation_count': count})
-
-
-def models_q_coach():
-    from django.db.models import Q
-    return Q(is_coach=True) | Q(is_admin=True)
 
 
 class CoachMessageListCreateView(generics.ListCreateAPIView):

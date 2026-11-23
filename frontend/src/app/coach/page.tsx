@@ -8,7 +8,10 @@ import {
   Activity, Calendar, Loader2, BarChart3, MessageSquare,
   Send, Star
 } from 'lucide-react'
-import { searchUsers, getGrowthLogs, sendCoachMessage, getMessages } from '@/lib/api'
+import {
+  searchUsers, getGrowthLogs, sendCoachMessage, getMessages,
+  getMemberRankings, getRings, getWorkgroups, updateCoachScore,
+} from '@/lib/api'
 
 function timeAgo(dateStr: string) {
   const d = new Date(dateStr)
@@ -35,6 +38,16 @@ export default function CoachPanel() {
   const [archive, setArchive] = useState<any[]>([])
   const [loadingArchive, setLoadingArchive] = useState(false)
 
+  const [ranking, setRanking] = useState<{ top: any[]; bottom: any[] }>({ top: [], bottom: [] })
+  const [loadingRank, setLoadingRank] = useState(false)
+  const [rings, setRings] = useState<any[]>([])
+  const [workgroups, setWorkgroups] = useState<any[]>([])
+  const [scoreTarget, setScoreTarget] = useState<'ring' | 'workgroup'>('ring')
+  const [scoreId, setScoreId] = useState('')
+  const [scoreValue, setScoreValue] = useState('8')
+  const [scoreMsg, setScoreMsg] = useState('')
+  const [scoreSaving, setScoreSaving] = useState(false)
+
   useEffect(() => {
     const t = setTimeout(() => {
       setLoading(true)
@@ -57,6 +70,25 @@ export default function CoachPanel() {
       .catch(() => setArchive([]))
       .finally(() => setLoadingArchive(false))
   }, [tab, messageSent])
+
+  useEffect(() => {
+    if (tab !== 'collective') return
+    setLoadingRank(true)
+    getMemberRankings({ field: selectedField, days: 7, limit: 10 })
+      .then((data) => setRanking({ top: data.top || [], bottom: data.bottom || [] }))
+      .catch(() => setRanking({ top: [], bottom: [] }))
+      .finally(() => setLoadingRank(false))
+  }, [tab, selectedField])
+
+  useEffect(() => {
+    if (tab !== 'collective') return
+    Promise.all([getRings().catch(() => []), getWorkgroups().catch(() => [])]).then(
+      ([r, w]) => {
+        setRings(r.results || r || [])
+        setWorkgroups(w.results || w || [])
+      }
+    )
+  }, [tab])
 
   const selectMember = async (m: any) => {
     setSelectedMember(m)
@@ -86,6 +118,31 @@ export default function CoachPanel() {
       setMessageError(err.message || 'ارسال ناموفق بود')
     } finally {
       setSending(false)
+    }
+  }
+
+  const submitScore = async () => {
+    if (!scoreId) {
+      setScoreMsg('یک مورد انتخاب کن')
+      return
+    }
+    setScoreSaving(true)
+    setScoreMsg('')
+    try {
+      const res = await updateCoachScore({
+        target: scoreTarget,
+        id: Number(scoreId),
+        score: Number(scoreValue),
+      })
+      setScoreMsg(
+        scoreTarget === 'ring'
+          ? `امتیاز حلقه ${res.name}: مربی ${res.coach_score} · کل ${res.score} · رتبه ${res.rank}`
+          : `امتیاز کارگروه ${res.name}: ${res.score}`
+      )
+    } catch (err: any) {
+      setScoreMsg(err.message || 'خطا در ذخیره')
+    } finally {
+      setScoreSaving(false)
     }
   }
 
@@ -211,26 +268,11 @@ export default function CoachPanel() {
                             <div className="grid grid-cols-2 gap-1 text-okhovat-500 dark:text-okhovat-400">
                               <span>ورزش: {g.sport_hours} ساعت</span>
                               <span>مطالعه: {g.study_pages} صفحه</span>
-                              {g.group_responsibility && (
-                                <span className="col-span-2">مسئولیت: {g.group_responsibility}</span>
-                              )}
-                              {g.personal_skill && (
-                                <span className="col-span-2">مهارت: {g.personal_skill}</span>
-                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button className="card p-3 text-sm text-okhovat-700 dark:text-okhovat-200 hover:border-okhovat-300 transition flex items-center gap-2">
-                      <Users size={16} className="text-okhovat-500" /> جلسات کارگروه
-                    </button>
-                    <button className="card p-3 text-sm text-okhovat-700 dark:text-okhovat-200 hover:border-okhovat-300 transition flex items-center gap-2">
-                      <Calendar size={16} className="text-okhovat-500" /> برنامه حلقه
-                    </button>
                   </div>
 
                   <div className="card p-4">
@@ -255,9 +297,7 @@ export default function CoachPanel() {
                     {messageSent && (
                       <p className="text-xs text-emerald-600 mt-2">پیام ذخیره شد و در پروفایل عضو نمایش داده می‌شود.</p>
                     )}
-                    {messageError && (
-                      <p className="text-xs text-red-500 mt-2">{messageError}</p>
-                    )}
+                    {messageError && <p className="text-xs text-red-500 mt-2">{messageError}</p>}
                   </div>
                 </div>
               )}
@@ -292,21 +332,126 @@ export default function CoachPanel() {
                 ))}
               </div>
 
-              <div className="card p-5">
-                <h3 className="text-sm font-semibold text-okhovat-700 dark:text-okhovat-200 mb-4 flex items-center gap-1.5">
-                  <BarChart3 size={14} /> رده‌بندی{' '}
-                  {selectedField === 'sport' ? 'ورزش' : selectedField === 'study' ? 'مطالعه' : 'حضور'}
-                </h3>
-                <p className="text-sm text-okhovat-400 text-center py-6">
-                  داده‌های رتبه‌بندی جمعی به‌زودی از API محاسبه می‌شود
-                </p>
-              </div>
+              {loadingRank ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="animate-spin text-okhovat-500" size={24} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="card p-4">
+                    <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-3 flex items-center gap-1.5">
+                      <BarChart3 size={14} /> ۱۰ نفر اول
+                    </h3>
+                    {ranking.top.length === 0 ? (
+                      <p className="text-xs text-okhovat-400">داده‌ای نیست</p>
+                    ) : (
+                      <ol className="space-y-2">
+                        {ranking.top.map((u, i) => (
+                          <li key={u.id} className="flex items-center justify-between text-sm">
+                            <span className="text-okhovat-800 dark:text-okhovat-100">
+                              {i + 1}. {u.full_name}
+                            </span>
+                            <span className="text-okhovat-500 text-xs">
+                              {u.value} {u.unit}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                  <div className="card p-4">
+                    <h3 className="text-sm font-semibold text-rose-700 dark:text-rose-300 mb-3 flex items-center gap-1.5">
+                      <BarChart3 size={14} /> ۱۰ نفر آخر
+                    </h3>
+                    {ranking.bottom.length === 0 ? (
+                      <p className="text-xs text-okhovat-400">داده‌ای نیست</p>
+                    ) : (
+                      <ol className="space-y-2">
+                        {ranking.bottom.map((u, i) => (
+                          <li key={u.id} className="flex items-center justify-between text-sm">
+                            <span className="text-okhovat-800 dark:text-okhovat-100">
+                              {i + 1}. {u.full_name}
+                            </span>
+                            <span className="text-okhovat-500 text-xs">
+                              {u.value} {u.unit}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="card p-5">
                 <h3 className="text-sm font-semibold text-okhovat-800 dark:text-okhovat-100 mb-3 flex items-center gap-1.5">
                   <Star size={14} className="text-gold-500" /> امتیازدهی حلقه و کارگروه
                 </h3>
-                <p className="text-sm text-okhovat-500 dark:text-okhovat-400">فرم امتیاز — اتصال ذخیره در اولویت‌های بعدی</p>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScoreTarget('ring')
+                      setScoreId('')
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                      scoreTarget === 'ring'
+                        ? 'bg-okhovat-500 text-white'
+                        : 'border border-okhovat-200 dark:border-okhovat-700 text-okhovat-600'
+                    }`}
+                  >
+                    حلقه
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScoreTarget('workgroup')
+                      setScoreId('')
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                      scoreTarget === 'workgroup'
+                        ? 'bg-okhovat-500 text-white'
+                        : 'border border-okhovat-200 dark:border-okhovat-700 text-okhovat-600'
+                    }`}
+                  >
+                    کارگروه
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <select
+                    className="input-field text-sm"
+                    value={scoreId}
+                    onChange={(e) => setScoreId(e.target.value)}
+                  >
+                    <option value="">انتخاب...</option>
+                    {(scoreTarget === 'ring' ? rings : workgroups).map((item: any) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="input-field text-sm"
+                    value={scoreValue}
+                    onChange={(e) => setScoreValue(e.target.value)}
+                  >
+                    <option value="10">۹–۱۰ عالی</option>
+                    <option value="8">۷–۸ خوب</option>
+                    <option value="6">۵–۶ متوسط</option>
+                    <option value="3">زیر ۵ نیاز به پیگیری</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={submitScore}
+                    disabled={scoreSaving}
+                    className="btn-primary text-sm py-2.5 disabled:opacity-50"
+                  >
+                    {scoreSaving ? '...' : 'ثبت امتیاز'}
+                  </button>
+                </div>
+                {scoreMsg && (
+                  <p className="text-xs text-okhovat-600 dark:text-okhovat-300 mt-2">{scoreMsg}</p>
+                )}
               </div>
             </motion.div>
           )}
@@ -345,17 +490,12 @@ export default function CoachPanel() {
                             {m.is_read ? ' · خوانده‌شده' : ' · نخوانده'}
                           </span>
                         </div>
-                        <p className="text-sm text-okhovat-600 dark:text-okhovat-300 whitespace-pre-wrap">
-                          {m.body}
-                        </p>
+                        <p className="text-sm text-okhovat-600 dark:text-okhovat-300 whitespace-pre-wrap">{m.body}</p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <p className="text-xs text-okhovat-400 text-center">
-                برای ارسال پیام جدید، از تب «نظرات فردی» عضو را انتخاب کنید.
-              </p>
             </motion.div>
           )}
         </AnimatePresence>

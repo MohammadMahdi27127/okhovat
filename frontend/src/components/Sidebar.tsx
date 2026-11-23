@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Home, FileText, PlusCircle, TrendingUp, User,
-  LayoutDashboard
+  LayoutDashboard, Sparkles
 } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import clsx from 'clsx'
@@ -20,6 +20,7 @@ const memberLinks = [
   { href: '/posts', icon: FileText, label: 'پست‌ها' },
   { href: '/new-post', icon: PlusCircle, label: 'پست جدید' },
   { href: '/growth', icon: TrendingUp, label: 'رشد فردی' },
+  { href: '/assistant', icon: Sparkles, label: 'همراه اخوت' },
   { href: '/profile', icon: User, label: 'پروفایل من' },
 ]
 
@@ -27,6 +28,7 @@ const coachLinks = [
   { href: '/', icon: Home, label: 'خانه' },
   { href: '/posts', icon: FileText, label: 'پست‌ها' },
   { href: '/coach', icon: LayoutDashboard, label: 'پنل نظارتی' },
+  { href: '/assistant', icon: Sparkles, label: 'همراه اخوت' },
   { href: '/profile', icon: User, label: 'پروفایل' },
 ]
 

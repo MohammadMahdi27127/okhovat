@@ -46,7 +46,7 @@ export default function HomePage() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
-                  href="#assistant"
+                  href="/assistant"
                   className="inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 text-okhovat-900 px-4 py-2 rounded-xl text-sm font-medium transition"
                 >
                   <MessageCircle size={16} />

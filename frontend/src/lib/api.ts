@@ -31,7 +31,6 @@ async function request(path: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   }
-  // فقط اگر body رشته JSON است Content-Type بگذار
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = headers['Content-Type'] || 'application/json'
   }
@@ -224,6 +223,26 @@ export async function suspendUser(userId: number, days: 1 | 3) {
     method: 'POST',
     body: JSON.stringify({ days }),
   })
+}
+
+// Coach messages
+export async function getMessages(params?: { recipient?: number; inbox?: boolean }) {
+  const q = new URLSearchParams()
+  if (params?.recipient) q.set('recipient', String(params.recipient))
+  if (params?.inbox) q.set('inbox', '1')
+  const query = q.toString() ? `?${q}` : ''
+  return request(`/messages/${query}`)
+}
+
+export async function sendCoachMessage(recipientId: number, body: string) {
+  return request('/messages/', {
+    method: 'POST',
+    body: JSON.stringify({ recipient_id: recipientId, body }),
+  })
+}
+
+export async function markMessageRead(id: number) {
+  return request(`/messages/${id}/read/`, { method: 'POST' })
 }
 
 // Admin

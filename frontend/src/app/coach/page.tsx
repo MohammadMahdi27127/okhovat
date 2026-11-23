@@ -8,7 +8,16 @@ import {
   Activity, Calendar, Loader2, BarChart3, MessageSquare,
   Send, Star
 } from 'lucide-react'
-import { searchUsers, getGrowthLogs } from '@/lib/api'
+import { searchUsers, getGrowthLogs, sendCoachMessage, getMessages } from '@/lib/api'
+
+function timeAgo(dateStr: string) {
+  const d = new Date(dateStr)
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (diff < 60) return 'همین الان'
+  if (diff < 3600) return `${Math.floor(diff / 60)} دقیقه پیش`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ساعت پیش`
+  return `${Math.floor(diff / 86400)} روز پیش`
+}
 
 export default function CoachPanel() {
   const [tab, setTab] = useState<'individual' | 'collective' | 'messages'>('individual')
@@ -21,6 +30,10 @@ export default function CoachPanel() {
   const [selectedField, setSelectedField] = useState<'sport' | 'study' | 'attendance'>('sport')
   const [messageText, setMessageText] = useState('')
   const [messageSent, setMessageSent] = useState(false)
+  const [messageError, setMessageError] = useState('')
+  const [sending, setSending] = useState(false)
+  const [archive, setArchive] = useState<any[]>([])
+  const [loadingArchive, setLoadingArchive] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -33,10 +46,23 @@ export default function CoachPanel() {
     return () => clearTimeout(t)
   }, [search])
 
+  useEffect(() => {
+    if (tab !== 'messages') return
+    setLoadingArchive(true)
+    getMessages()
+      .then((data) => {
+        const list = data.results || data || []
+        setArchive(Array.isArray(list) ? list : [])
+      })
+      .catch(() => setArchive([]))
+      .finally(() => setLoadingArchive(false))
+  }, [tab, messageSent])
+
   const selectMember = async (m: any) => {
     setSelectedMember(m)
     setLoadingGrowth(true)
     setMessageSent(false)
+    setMessageError('')
     try {
       const data = await getGrowthLogs(m.id)
       setGrowthLogs(data.results || data || [])
@@ -47,18 +73,25 @@ export default function CoachPanel() {
     }
   }
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!messageText.trim() || !selectedMember) return
-    // UI-only until backend message API is wired
-    setMessageSent(true)
-    setMessageText('')
-    setTimeout(() => setMessageSent(false), 2500)
+    setSending(true)
+    setMessageError('')
+    try {
+      await sendCoachMessage(selectedMember.id, messageText.trim())
+      setMessageSent(true)
+      setMessageText('')
+      setTimeout(() => setMessageSent(false), 2500)
+    } catch (err: any) {
+      setMessageError(err.message || 'ارسال ناموفق بود')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
     <AppShell role="coach">
       <div className="max-w-3xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div className="w-11 h-11 rounded-xl bg-gold-500 flex items-center justify-center text-white font-bold shadow-sm">
             م
@@ -69,7 +102,6 @@ export default function CoachPanel() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex bg-white dark:bg-okhovat-900 rounded-xl border border-okhovat-100 dark:border-okhovat-800 p-1 mb-5">
           {(
             [
@@ -150,7 +182,6 @@ export default function CoachPanel() {
                     ← بازگشت به لیست
                   </button>
 
-                  {/* Member card */}
                   <div className="card p-5">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 rounded-xl bg-okhovat-500 text-white flex items-center justify-center text-lg font-bold">
@@ -193,7 +224,6 @@ export default function CoachPanel() {
                     )}
                   </div>
 
-                  {/* Quick actions */}
                   <div className="grid grid-cols-2 gap-3">
                     <button className="card p-3 text-sm text-okhovat-700 dark:text-okhovat-200 hover:border-okhovat-300 transition flex items-center gap-2">
                       <Users size={16} className="text-okhovat-500" /> جلسات کارگروه
@@ -203,7 +233,6 @@ export default function CoachPanel() {
                     </button>
                   </div>
 
-                  {/* Message to member */}
                   <div className="card p-4">
                     <h3 className="text-sm font-semibold text-okhovat-800 dark:text-okhovat-100 mb-2 flex items-center gap-1.5">
                       <MessageSquare size={14} /> پیام به عضو
@@ -217,13 +246,17 @@ export default function CoachPanel() {
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!messageText.trim()}
+                      disabled={!messageText.trim() || sending}
                       className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5 disabled:opacity-50"
                     >
-                      <Send size={14} /> ارسال پیام
+                      {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                      ارسال پیام
                     </button>
                     {messageSent && (
-                      <p className="text-xs text-emerald-600 mt-2">پیام ثبت شد (نمایش در پروفایل عضو به‌زودی متصل می‌شود)</p>
+                      <p className="text-xs text-emerald-600 mt-2">پیام ذخیره شد و در پروفایل عضو نمایش داده می‌شود.</p>
+                    )}
+                    {messageError && (
+                      <p className="text-xs text-red-500 mt-2">{messageError}</p>
                     )}
                   </div>
                 </div>
@@ -269,40 +302,11 @@ export default function CoachPanel() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl p-3 text-center bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-0.5">۱۰ نفر اول</p>
-                  <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">فعال‌ترین‌ها</p>
-                </div>
-                <div className="rounded-xl p-3 text-center bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
-                  <p className="text-xs text-rose-600 dark:text-rose-400 mb-0.5">۱۰ نفر آخر</p>
-                  <p className="text-sm font-bold text-rose-700 dark:text-rose-300">نیاز به توجه</p>
-                </div>
-              </div>
-
-              {/* Grading forms placeholder from design */}
               <div className="card p-5">
                 <h3 className="text-sm font-semibold text-okhovat-800 dark:text-okhovat-100 mb-3 flex items-center gap-1.5">
                   <Star size={14} className="text-gold-500" /> امتیازدهی حلقه و کارگروه
                 </h3>
-                <p className="text-sm text-okhovat-500 dark:text-okhovat-400 mb-3">
-                  انتخاب حلقه یا کارگروه و ثبت امتیاز از فهرست
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <select className="input-field text-sm">
-                    <option>انتخاب حلقه...</option>
-                    <option>سلمان</option>
-                    <option>ابوذر</option>
-                    <option>مقداد</option>
-                  </select>
-                  <select className="input-field text-sm">
-                    <option>امتیاز...</option>
-                    <option>۹–۱۰ عالی</option>
-                    <option>۷–۸ خوب</option>
-                    <option>۵–۶ متوسط</option>
-                    <option>زیر ۵ نیاز به پیگیری</option>
-                  </select>
-                </div>
+                <p className="text-sm text-okhovat-500 dark:text-okhovat-400">فرم امتیاز — اتصال ذخیره در اولویت‌های بعدی</p>
               </div>
             </motion.div>
           )}
@@ -316,15 +320,41 @@ export default function CoachPanel() {
               className="space-y-4"
             >
               <div className="card p-5">
-                <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100 mb-2 flex items-center gap-2">
-                  <MessageSquare size={16} className="text-okhovat-500" /> آرشیو پیام‌ها
+                <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100 mb-3 flex items-center gap-2">
+                  <MessageSquare size={16} className="text-okhovat-500" /> آرشیو پیام‌های ارسالی
                 </h3>
-                <p className="text-sm text-okhovat-400 py-6 text-center">
-                  پیام‌های ارسالی به اعضا اینجا آرشیو می‌شوند. اتصال کامل پس از API پیام فعال می‌شود.
-                </p>
+                {loadingArchive ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="animate-spin text-okhovat-500" size={22} />
+                  </div>
+                ) : archive.length === 0 ? (
+                  <p className="text-sm text-okhovat-400 py-6 text-center">هنوز پیامی ارسال نکرده‌اید.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {archive.map((m) => (
+                      <div
+                        key={m.id}
+                        className="p-3 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 border border-okhovat-100 dark:border-okhovat-800"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">
+                            به {m.recipient?.full_name || 'عضو'}
+                          </span>
+                          <span className="text-[11px] text-okhovat-400">
+                            {m.created_at ? timeAgo(m.created_at) : ''}
+                            {m.is_read ? ' · خوانده‌شده' : ' · نخوانده'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-okhovat-600 dark:text-okhovat-300 whitespace-pre-wrap">
+                          {m.body}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <p className="text-xs text-okhovat-400 text-center">
-                برای ارسال پیام، از تب «نظرات فردی» عضو را انتخاب کنید.
+                برای ارسال پیام جدید، از تب «نظرات فردی» عضو را انتخاب کنید.
               </p>
             </motion.div>
           )}

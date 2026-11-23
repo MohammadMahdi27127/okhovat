@@ -12,6 +12,7 @@ from django.db.models import Count, Q
 from .models import (
     User, Post, PostLike, PostComment, GrowthLog,
     UserInteraction, Ring, Workgroup, CoachMessage,
+    PostRecommendation, PostBookmark,
 )
 from .serializers import (
     UserSerializer, UserBriefSerializer, PostSerializer, PostCreateSerializer,
@@ -82,7 +83,8 @@ class PostListCreateView(generics.ListCreateAPIView):
         if post_type:
             qs = qs.filter(post_type=post_type)
         if self.request.query_params.get('trending') == '1':
-            qs = qs.filter(is_trending=True)
+            # ترند یا پیشنهادی به مربی
+            qs = qs.filter(Q(is_trending=True) | Q(recommendations__isnull=False)).distinct()
         return qs
 
     def get_serializer_class(self):
@@ -155,6 +157,49 @@ class PostLikeToggleView(APIView):
         post.like_count += 1
         post.save(update_fields=['like_count'])
         return Response({'liked': True, 'like_count': post.like_count})
+
+
+class PostRecommendToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({'detail': 'پست یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+
+        rec, created = PostRecommendation.objects.get_or_create(
+            post=post, recommended_by=request.user
+        )
+        if not created:
+            rec.delete()
+            count = post.recommendations.count()
+            if count == 0 and post.is_trending:
+                post.is_trending = False
+                post.save(update_fields=['is_trending'])
+            return Response({'recommended': False, 'recommendation_count': count})
+
+        count = post.recommendations.count()
+        if count >= 1 and not post.is_trending:
+            post.is_trending = True
+            post.save(update_fields=['is_trending'])
+        return Response({'recommended': True, 'recommendation_count': count})
+
+
+class PostBookmarkToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({'detail': 'پست یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+
+        bm, created = PostBookmark.objects.get_or_create(post=post, user=request.user)
+        if not created:
+            bm.delete()
+            return Response({'bookmarked': False})
+        return Response({'bookmarked': True})
 
 
 class PostCommentListCreateView(generics.ListCreateAPIView):
@@ -248,10 +293,6 @@ class SuspendUserView(APIView):
 
 
 class CoachMessageListCreateView(generics.ListCreateAPIView):
-    """
-    GET: عضو → پیام‌های دریافتی؛ مربی/ادمین → آرشیو ارسالی (یا با ?inbox=1 دریافتی)
-    POST: فقط مربی یا ادمین — ارسال به عضو
-    """
     serializer_class = CoachMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
 

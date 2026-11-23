@@ -29,6 +29,10 @@ urlpatterns = [
     path('workgroups/<slug:slug>/', views.WorkgroupDetailView.as_view(), name='workgroup-detail'),
     path('workgroups/<slug:slug>/content/', views.WorkgroupContentCreateView.as_view(), name='workgroup-content'),
 
+    # Rankings
+    path('rankings/members/', views.MemberRankingView.as_view(), name='member-rankings'),
+    path('rankings/score/', views.CoachScoreUpdateView.as_view(), name='coach-score'),
+
     # Users
     path('users/', views.UserListView.as_view(), name='user-list'),
     path('users/<int:pk>/suspend/', views.SuspendUserView.as_view(), name='user-suspend'),

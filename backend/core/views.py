@@ -7,7 +7,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum, Avg
 
 from .models import (
     User, Post, PostLike, PostComment, GrowthLog,
@@ -194,7 +194,7 @@ class PostBookmarkToggleView(APIView):
         except Post.DoesNotExist:
             return Response({'detail': 'پست یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
 
-        bm, created = PostBookmark.objects.get_or_create(post=post, user=request.user)
+        bm, created = PostBookmarkPostBookmark.objects.get_or_create(post=post, user=request.user)
         if not created:
             bm.delete()
             return Response({'bookmarked': False})
@@ -327,6 +327,150 @@ class WorkgroupListView(APIView):
         data = WorkgroupSerializer(qs, many=True).data
         cache_set(CACHE_WORKGROUPS, data, timeout=300)
         return Response(data)
+
+
+class MemberRankingView(APIView):
+    """رتبه‌بندی اعضا بر اساس ورزش / مطالعه / حضور"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        field = request.query_params.get('field', 'sport')
+        if field not in ('sport', 'study', 'attendance'):
+            field = 'sport'
+        try:
+            days = int(request.query_params.get('days', 7))
+        except (TypeError, ValueError):
+            days = 7
+        days = max(1, min(days, 90))
+        try:
+            limit = int(request.query_params.get('limit', 10))
+        except (TypeError, ValueError):
+            limit = 10
+        limit = max(1, min(limit, 50))
+
+        since = timezone.now().date() - timedelta(days=days)
+
+        if field == 'attendance':
+            users = list(
+                User.objects.filter(is_active=True)
+                .order_by('-attendance_percentage')[: limit * 3]
+            )
+            ranked = [
+                {
+                    'id': u.id,
+                    'full_name': u.full_name,
+                    'group_code': u.group_code,
+                    'value': round(float(u.attendance_percentage or 0), 1),
+                    'unit': '%',
+                }
+                for u in users
+            ]
+        else:
+            metric = 'sport_hours' if field == 'sport' else 'study_pages'
+            unit = 'ساعت' if field == 'sport' else 'صفحه'
+            rows = (
+                GrowthLog.objects.filter(date__gte=since)
+                .values('user_id')
+                .annotate(total=Sum(metric))
+                .order_by('-total')
+            )
+            user_ids = [r['user_id'] for r in rows if r['total']]
+            users_map = {
+                u.id: u
+                for u in User.objects.filter(id__in=user_ids, is_active=True)
+            }
+            ranked = []
+            for r in rows:
+                u = users_map.get(r['user_id'])
+                if not u:
+                    continue
+                ranked.append({
+                    'id': u.id,
+                    'full_name': u.full_name,
+                    'group_code': u.group_code,
+                    'value': round(float(r['total'] or 0), 1),
+                    'unit': unit,
+                })
+
+        top = ranked[:limit]
+        bottom = list(reversed(ranked[-limit:])) if len(ranked) > limit else list(reversed(ranked))
+
+        return Response({
+            'field': field,
+            'days': days,
+            'top': top,
+            'bottom': bottom,
+            'total_ranked': len(ranked),
+        })
+
+
+class CoachScoreUpdateView(APIView):
+    """ثبت امتیاز مربی برای حلقه یا کارگروه"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if not (getattr(request.user, 'is_coach', False) or getattr(request.user, 'is_admin', False)):
+            return Response({'detail': 'فقط مربی یا ادمین'}, status=status.HTTP_403_FORBIDDEN)
+
+        target = request.data.get('target')  # ring | workgroup
+        try:
+            target_id = int(request.data.get('id'))
+        except (TypeError, ValueError):
+            return Response({'detail': 'شناسه نامعتبر'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            score = float(request.data.get('score', 0))
+        except (TypeError, ValueError):
+            return Response({'detail': 'امتیاز نامعتبر'}, status=status.HTTP_400_BAD_REQUEST)
+        score = max(0.0, min(score, 10.0))
+
+        if target == 'ring':
+            try:
+                ring = Ring.objects.get(pk=target_id)
+            except Ring.DoesNotExist:
+                return Response({'detail': 'حلقه یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+            ring.coach_score = score
+            ring.recalculate_score()
+            # به‌روزرسانی رتبه همه حلقه‌ها
+            all_rings = list(Ring.objects.order_by('-score', 'ring_number'))
+            for i, r in enumerate(all_rings, start=1):
+                if r.rank != i:
+                    r.rank = i
+                    r.save(update_fields=['rank'])
+            try:
+                invalidate_rings_cache()
+            except Exception:
+                pass
+            return Response({
+                'target': 'ring',
+                'id': ring.id,
+                'name': ring.name,
+                'coach_score': ring.coach_score,
+                'score': ring.score,
+                'rank': ring.rank,
+            })
+
+        if target == 'workgroup':
+            try:
+                wg = Workgroup.objects.get(pk=target_id)
+            except Workgroup.DoesNotExist:
+                return Response({'detail': 'کارگروه یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+            wg.score = score
+            wg.save(update_fields=['score'])
+            try:
+                from .cache_utils import CACHE_WORKGROUPS
+                # invalidate by rewriting empty — if helper missing, ignore
+                cache_set(CACHE_WORKGROUPS, None, timeout=1)
+            except Exception:
+                pass
+            return Response({
+                'target': 'workgroup',
+                'id': wg.id,
+                'name': wg.name,
+                'score': wg.score,
+            })
+
+        return Response({'detail': 'target باید ring یا workgroup باشد'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserListView(generics.ListAPIView):

@@ -10,7 +10,8 @@ import {
   Loader2, Activity
 } from 'lucide-react'
 import {
-  getMe, getUser, saveUser, clearTokens, uploadAvatar, getGrowthLogs
+  getMe, getUser, saveUser, clearTokens, uploadAvatar, getGrowthLogs,
+  getMessages, markMessageRead,
 } from '@/lib/api'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
@@ -18,9 +19,17 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 function mediaUrl(path?: string | null) {
   if (!path) return null
   if (path.startsWith('http')) return path
-  // avatar from DRF may be /media/...
   const origin = API_BASE.replace(/\/api\/?$/, '')
   return `${origin}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+function timeAgo(dateStr: string) {
+  const d = new Date(dateStr)
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (diff < 60) return 'همین الان'
+  if (diff < 3600) return `${Math.floor(diff / 60)} دقیقه پیش`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ساعت پیش`
+  return `${Math.floor(diff / 86400)} روز پیش`
 }
 
 export default function ProfilePage() {
@@ -29,6 +38,7 @@ export default function ProfilePage() {
 
   const [user, setUser] = useState<any>(null)
   const [recentGrowth, setRecentGrowth] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -46,6 +56,19 @@ export default function ProfilePage() {
         setRecentGrowth(Array.isArray(list) ? list.slice(0, 3) : [])
       } catch {
         setRecentGrowth([])
+      }
+      try {
+        const msgs = await getMessages({ inbox: true })
+        const list = msgs.results || msgs || []
+        setMessages(Array.isArray(list) ? list : [])
+        // mark unread as read (best-effort)
+        for (const m of list) {
+          if (m && !m.is_read && m.id) {
+            markMessageRead(m.id).catch(() => {})
+          }
+        }
+      } catch {
+        setMessages([])
       }
     } catch {
       const cached = getUser()
@@ -156,7 +179,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Intro */}
           <div className="card p-5 mb-4">
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
@@ -213,7 +235,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Stats — based on real fields (no follower model yet) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <StatBox label="پست" value={String(postsCount)} />
             <StatBox label="گزارش رشد" value={String(growthCount)} />
@@ -224,7 +245,6 @@ export default function ProfilePage() {
             />
           </div>
 
-          {/* Attendance */}
           <div className="card p-5 mb-4">
             <div className="flex items-center gap-2 mb-3">
               <Users size={18} className="text-okhovat-500" />
@@ -244,16 +264,8 @@ export default function ProfilePage() {
                 <p className="text-xs text-okhovat-500 mt-0.5">میانگین حلقه</p>
               </div>
             </div>
-            {ringName && (
-              <p className="text-xs text-okhovat-400 mt-3 text-center">
-                حلقه {ringName}
-                {user.ring?.rank ? ` · رتبه ${user.ring.rank}` : ''}
-                {user.ring?.score != null ? ` · امتیاز ${user.ring.score}` : ''}
-              </p>
-            )}
           </div>
 
-          {/* Recent growth */}
           <div className="card p-5 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100 flex items-center gap-2">
@@ -288,7 +300,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Status placeholders from growth extra — until dedicated fields exist */}
           <div className="card p-5 mb-4">
             <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100 mb-3">وضعیت من</h3>
             <div className="space-y-3">
@@ -321,15 +332,32 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Coach messages — API in priority 2 */}
+          {/* Coach messages from API */}
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-3">
               <MessageSquare size={18} className="text-okhovat-500" />
               <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100">پیام‌های مربی</h3>
             </div>
-            <p className="text-sm text-okhovat-400 py-2">
-              پیام‌های مربی پس از اتصال API پیام اینجا نمایش داده می‌شوند.
-            </p>
+            {messages.length === 0 ? (
+              <p className="text-sm text-okhovat-400 py-2">هنوز پیامی از مربی نرسیده است.</p>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40"
+                  >
+                    <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed whitespace-pre-wrap">
+                      {m.body}
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                      {m.sender?.full_name || 'مربی'}
+                      {m.created_at ? ` · ${timeAgo(m.created_at)}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

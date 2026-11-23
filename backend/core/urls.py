@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 from . import views_follow
 from . import views_growth
+from . import views_posts
 
 urlpatterns = [
     # Auth
@@ -15,14 +16,14 @@ urlpatterns = [
     path('auth/avatar/', views.AvatarUploadView.as_view(), name='avatar-upload'),
 
     # Posts
-    path('posts/', views.PostListCreateView.as_view(), name='post-list'),
+    path('posts/', views_posts.PostListCreateView.as_view(), name='post-list'),
     path('posts/<int:pk>/', views.PostDetailView.as_view(), name='post-detail'),
     path('posts/<int:pk>/like/', views.PostLikeToggleView.as_view(), name='post-like'),
     path('posts/<int:pk>/comments/', views.PostCommentListCreateView.as_view(), name='post-comments'),
     path('posts/<int:pk>/recommend/', views.PostRecommendToggleView.as_view(), name='post-recommend'),
     path('posts/<int:pk>/bookmark/', views.PostBookmarkToggleView.as_view(), name='post-bookmark'),
 
-    # Growth (multipart + skill_document)
+    # Growth
     path('growth/', views_growth.GrowthLogListCreateView.as_view(), name='growth-list'),
 
     # Rings & Workgroups

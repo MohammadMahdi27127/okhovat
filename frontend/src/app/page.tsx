@@ -1,23 +1,52 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Preloader from '@/components/Preloader'
 import LoginModal from '@/components/LoginModal'
 import AppShell from '@/components/AppShell'
-import { MessageCircle, Calendar, Users, BookOpen, TrendingUp, ChevronLeft } from 'lucide-react'
+import { MessageCircle, Calendar, Users, BookOpen, TrendingUp, ChevronLeft, Loader2 } from 'lucide-react'
+import { getWorkgroups, getRings, getPosts, getUser } from '@/lib/api'
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [showLogin, setShowLogin] = useState(false)
+  const [workgroups, setWorkgroups] = useState<any[]>([])
+  const [rings, setRings] = useState<any[]>([])
+  const [programs, setPrograms] = useState<any[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+  const user = typeof window !== 'undefined' ? getUser() : null
+
+  useEffect(() => {
+    if (loading) return
+    setDataLoading(true)
+    Promise.all([
+      getWorkgroups().catch(() => []),
+      getRings().catch(() => []),
+      getPosts().catch(() => ({ results: [] })),
+    ])
+      .then(([wg, ringsData, postsData]) => {
+        const groups = wg.results || wg || []
+        setWorkgroups(Array.isArray(groups) ? groups : [])
+        const r = ringsData.results || ringsData || []
+        setRings(Array.isArray(r) ? r.slice(0, 5) : [])
+        const posts = postsData.results || postsData || []
+        const prog = (Array.isArray(posts) ? posts : []).filter(
+          (p: any) =>
+            p.post_type === 'circle_program' || p.post_type === 'workgroup_meeting'
+        )
+        setPrograms(prog.slice(0, 5))
+      })
+      .finally(() => setDataLoading(false))
+  }, [loading])
 
   if (loading) {
     return <Preloader onComplete={() => setLoading(false)} />
   }
 
   return (
-    <AppShell onLoginClick={() => setShowLogin(true)}>
+    <AppShell onLoginClick={() => setShowLogin(true)} userName={user?.full_name}>
       <div className="max-w-5xl mx-auto px-4 py-6">
         <motion.h1
           initial={{ opacity: 0, y: 10 }}
@@ -40,7 +69,9 @@ export default function HomePage() {
               ا
             </div>
             <div className="flex-1">
-              <h2 className="text-lg md:text-xl font-bold mb-1">سلام دوست عزیز</h2>
+              <h2 className="text-lg md:text-xl font-bold mb-1">
+                {user?.full_name ? `سلام ${user.full_name}` : 'سلام دوست عزیز'}
+              </h2>
               <p className="text-okhovat-100 text-sm leading-relaxed">
                 به سامانهٔ اخوت خوش آمدی. اگر کمکی خواستی، همراه اخوت اینجاست.
               </p>
@@ -52,79 +83,90 @@ export default function HomePage() {
                   <MessageCircle size={16} />
                   گفت‌وگو با همراه اخوت
                 </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-medium transition"
-                >
-                  ورود به حساب
-                </Link>
+                {!user && (
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-medium transition"
+                  >
+                    ورود به حساب
+                  </Link>
+                )}
               </div>
             </div>
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 space-y-5">
-            <Section
-              title="برنامه‌های هفته"
-              icon={<Calendar size={18} />}
-              emptyMessage="برنامه‌ای برای این هفته ثبت نشده است."
-            >
-              <ProgramCard
-                title="جلسه حلقه سلمان"
-                desc="چهارشنبه ساعت ۱۹ — موضوع: نظم فردی"
-                href="/workgroup/salman"
-              />
-              <ProgramCard
-                title="کارگروه آموزش"
-                desc="پنج‌شنبه ساعت ۱۷ — مرور محتوا"
-                href="/workgroup/education"
-              />
-            </Section>
-
-            <Section
-              title="محتوای کارگروه‌ها"
-              icon={<BookOpen size={18} />}
-              emptyMessage="محتوایی هنوز منتشر نشده است."
-            >
-              <ProgramCard
-                title="خلاصه جلسه آموزش"
-                desc="نکات کلیدی هفته گذشته"
-                href="/workgroup/education"
-              />
-            </Section>
+        {dataLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="animate-spin text-okhovat-500" size={24} />
           </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2 space-y-5">
+              <Section title="برنامه‌های هفته" icon={<Calendar size={18} />}>
+                {programs.length === 0 ? (
+                  <p className="text-sm text-okhovat-400 py-2">برنامه‌ای ثبت نشده است.</p>
+                ) : (
+                  programs.map((p) => (
+                    <ProgramCard
+                      key={p.id}
+                      title={p.title || (p.post_type === 'circle_program' ? 'برنامه حلقه' : 'جلسه کارگروه')}
+                      desc={(p.content || '').slice(0, 80)}
+                      href="/posts"
+                    />
+                  ))
+                )}
+              </Section>
 
-          <div className="space-y-5">
-            <Section
-              title="گزارش روزانه"
-              icon={<TrendingUp size={18} />}
-              emptyMessage="هنوز گزارشی ثبت نکرده‌ای."
-            >
-              <Link
-                href="/growth"
-                className="block p-4 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 hover:bg-okhovat-100 dark:hover:bg-okhovat-800 transition text-sm text-okhovat-700 dark:text-okhovat-200"
-              >
-                ثبت رشد امروز →
-              </Link>
-            </Section>
+              <Section title="کارگروه‌ها" icon={<BookOpen size={18} />}>
+                {workgroups.length === 0 ? (
+                  <p className="text-sm text-okhovat-400 py-2">کارگروهی ثبت نشده است.</p>
+                ) : (
+                  workgroups.map((g) => (
+                    <ProgramCard
+                      key={g.id}
+                      title={g.name}
+                      desc={g.description || 'مشاهده محتوا و پنل مسئول'}
+                      href={`/workgroup/${g.slug || g.id}`}
+                    />
+                  ))
+                )}
+              </Section>
+            </div>
 
-            <Section
-              title="حلقه‌های پیشرو"
-              icon={<Users size={18} />}
-              emptyMessage="داده‌ای موجود نیست."
-            >
-              <div className="space-y-2">
-                {['سلمان', 'ابوذر', 'مقداد'].map((name, i) => (
-                  <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-okhovat-50/80 dark:bg-okhovat-900/60">
-                    <span className="text-sm text-okhovat-800 dark:text-okhovat-200">{name}</span>
-                    <span className="text-xs font-medium text-okhovat-500">{92 - i * 5}٪</span>
+            <div className="space-y-5">
+              <Section title="گزارش روزانه" icon={<TrendingUp size={18} />}>
+                <Link
+                  href="/growth"
+                  className="block p-4 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 hover:bg-okhovat-100 dark:hover:bg-okhovat-800 transition text-sm text-okhovat-700 dark:text-okhovat-200"
+                >
+                  ثبت رشد امروز →
+                </Link>
+              </Section>
+
+              <Section title="حلقه‌های پیشرو" icon={<Users size={18} />}>
+                {rings.length === 0 ? (
+                  <p className="text-sm text-okhovat-400 py-2">داده‌ای موجود نیست.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {rings.map((ring) => (
+                      <Link
+                        key={ring.id}
+                        href="/rankings"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-okhovat-50/80 dark:bg-okhovat-900/60 hover:bg-okhovat-100 dark:hover:bg-okhovat-800 transition"
+                      >
+                        <span className="text-sm text-okhovat-800 dark:text-okhovat-200">{ring.name}</span>
+                        <span className="text-xs font-medium text-okhovat-500">
+                          {ring.score != null ? `${ring.score} امتیاز` : ring.attendance_avg != null ? `${ring.attendance_avg}٪` : '—'}
+                        </span>
+                      </Link>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </Section>
+                )}
+              </Section>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <LoginModal
@@ -140,14 +182,11 @@ function Section({
   title,
   icon,
   children,
-  emptyMessage,
 }: {
   title: string
   icon: React.ReactNode
   children?: React.ReactNode
-  emptyMessage?: string
 }) {
-  const hasContent = !!children
   return (
     <motion.section
       initial={{ opacity: 0, y: 12 }}
@@ -158,9 +197,7 @@ function Section({
         <span className="text-okhovat-500">{icon}</span>
         <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100">{title}</h3>
       </div>
-      {hasContent ? children : (
-        <p className="text-sm text-okhovat-500 dark:text-okhovat-400 py-2">{emptyMessage}</p>
-      )}
+      {children}
     </motion.section>
   )
 }
@@ -171,11 +208,11 @@ function ProgramCard({ title, desc, href }: { title: string; desc: string; href:
       href={href}
       className="flex items-center justify-between p-3.5 rounded-xl bg-okhovat-50/80 dark:bg-okhovat-900/50 hover:bg-okhovat-100 dark:hover:bg-okhovat-800 transition group mb-2 last:mb-0"
     >
-      <div>
+      <div className="min-w-0">
         <p className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">{title}</p>
-        <p className="text-xs text-okhovat-500 dark:text-okhovat-400 mt-0.5">{desc}</p>
+        <p className="text-xs text-okhovat-500 dark:text-okhovat-400 mt-0.5 line-clamp-2">{desc}</p>
       </div>
-      <ChevronLeft size={16} className="text-okhovat-400 group-hover:text-okhovat-600 transition" />
+      <ChevronLeft size={16} className="text-okhovat-400 group-hover:text-okhovat-600 transition shrink-0" />
     </Link>
   )
 }

@@ -6,10 +6,13 @@ import Link from 'next/link'
 import AppShell from '@/components/AppShell'
 import {
   Heart, MessageCircle, Share2, Bookmark,
-  Sparkles, Image as ImageIcon, Smile, Loader2,
-  PlusCircle, Film, Star
+  Sparkles, Loader2,
+  PlusCircle, Film, Star, Send, X
 } from 'lucide-react'
-import { getPosts, toggleLike } from '@/lib/api'
+import {
+  getPosts, toggleLike, toggleRecommend, toggleBookmark,
+  getComments, addComment,
+} from '@/lib/api'
 
 function timeAgo(dateStr: string) {
   const d = new Date(dateStr)
@@ -26,6 +29,17 @@ export default function PostsPage() {
   const [posts, setPosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [openComments, setOpenComments] = useState<number | null>(null)
+  const [comments, setComments] = useState<Record<number, any[]>>({})
+  const [commentText, setCommentText] = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [sendingComment, setSendingComment] = useState(false)
+  const [toast, setToast] = useState('')
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2000)
+  }
 
   const loadPosts = async () => {
     setLoading(true)
@@ -56,14 +70,111 @@ export default function PostsPage() {
         )
       )
     } catch {
-      // ignore if not logged in
+      showToast('برای لایک وارد شوید')
+    }
+  }
+
+  const handleRecommend = async (postId: number) => {
+    try {
+      const res = await toggleRecommend(postId)
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                is_recommended: res.recommended,
+                recommendation_count: res.recommendation_count,
+                is_trending: res.recommended ? true : p.is_trending,
+              }
+            : p
+        )
+      )
+      showToast(res.recommended ? 'پیشنهاد شد برای مربی' : 'پیشنهاد برداشته شد')
+    } catch {
+      showToast('برای پیشنهاد وارد شوید')
+    }
+  }
+
+  const handleBookmark = async (postId: number) => {
+    try {
+      const res = await toggleBookmark(postId)
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, is_bookmarked: res.bookmarked } : p
+        )
+      )
+      showToast(res.bookmarked ? 'ذخیره شد' : 'از ذخیره‌ها حذف شد')
+    } catch {
+      showToast('برای ذخیره وارد شوید')
+    }
+  }
+
+  const handleShare = async (postId: number) => {
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/posts#${postId}`
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+        showToast('لینک کپی شد')
+      } else {
+        showToast(url)
+      }
+    } catch {
+      showToast('کپی لینک ممکن نشد')
+    }
+  }
+
+  const openCommentBox = async (postId: number) => {
+    if (openComments === postId) {
+      setOpenComments(null)
+      return
+    }
+    setOpenComments(postId)
+    setCommentText('')
+    setLoadingComments(true)
+    try {
+      const data = await getComments(postId)
+      const list = data.results || data || []
+      setComments((prev) => ({ ...prev, [postId]: Array.isArray(list) ? list : [] }))
+    } catch {
+      setComments((prev) => ({ ...prev, [postId]: [] }))
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const submitComment = async (postId: number) => {
+    if (!commentText.trim()) return
+    setSendingComment(true)
+    try {
+      const created = await addComment(postId, commentText.trim())
+      setComments((prev) => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), created],
+      }))
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, comment_count: (p.comment_count || 0) + 1 }
+            : p
+        )
+      )
+      setCommentText('')
+    } catch {
+      showToast('برای نظر دادن وارد شوید')
+    } finally {
+      setSendingComment(false)
     }
   }
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto">
-        {/* Header actions */}
+      <div className="max-w-2xl mx-auto relative">
+        {toast && (
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-okhovat-800 text-white text-sm shadow-lg">
+            {toast}
+          </div>
+        )}
+
         <div className="sticky top-0 z-20 bg-cream-100/90 dark:bg-okhovat-950/90 backdrop-blur-md border-b border-okhovat-100 dark:border-okhovat-800 px-4 pt-4">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-bold text-okhovat-800 dark:text-okhovat-100">پست‌ها</h1>
@@ -83,7 +194,6 @@ export default function PostsPage() {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="flex">
             {['برای شما', 'دنبال‌شده‌ها', 'پست‌های ترند شده'].map((tab) => (
               <button
@@ -110,7 +220,13 @@ export default function PostsPage() {
         {activeTab === 'پست‌های ترند شده' && (
           <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-100 dark:border-amber-900/30 flex items-center gap-2">
             <Sparkles size={15} className="text-amber-500" />
-            <p className="text-sm text-amber-800 dark:text-amber-200">پست‌هایی که برای دیدن مربی پیشنهاد شده‌اند</p>
+            <p className="text-sm text-amber-800 dark:text-amber-200">پست‌های ترند یا پیشنهادی به مربی</p>
+          </div>
+        )}
+
+        {activeTab === 'دنبال‌شده‌ها' && (
+          <div className="px-4 py-2.5 text-xs text-okhovat-400 border-b border-okhovat-100 dark:border-okhovat-800">
+            تب دنبال‌شده‌ها پس از مدل Follow فعال می‌شود — فعلاً همان فید کلی.
           </div>
         )}
 
@@ -134,6 +250,7 @@ export default function PostsPage() {
               return (
                 <motion.article
                   key={post.id}
+                  id={String(post.id)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.03 }}
@@ -167,9 +284,11 @@ export default function PostsPage() {
                         {post.content}
                       </p>
 
-                      {/* Actions */}
                       <div className="flex items-center justify-between mt-3 max-w-md">
-                        <button className="flex items-center gap-1.5 text-okhovat-500 hover:text-sky-500 group">
+                        <button
+                          onClick={() => openCommentBox(post.id)}
+                          className="flex items-center gap-1.5 text-okhovat-500 hover:text-sky-500 group"
+                        >
                           <span className="p-1.5 rounded-full group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 transition">
                             <MessageCircle size={17} />
                           </span>
@@ -187,23 +306,93 @@ export default function PostsPage() {
                           <span className="text-xs">{post.like_count || ''}</span>
                         </button>
                         {!isCoach && (
-                          <button className="flex items-center gap-1.5 text-okhovat-500 hover:text-gold-500 group">
+                          <button
+                            onClick={() => handleRecommend(post.id)}
+                            className={`flex items-center gap-1.5 group ${
+                              post.is_recommended
+                                ? 'text-gold-500'
+                                : 'text-okhovat-500 hover:text-gold-500'
+                            }`}
+                            title="پیشنهاد به مربی"
+                          >
                             <span className="p-1.5 rounded-full group-hover:bg-amber-50 dark:group-hover:bg-amber-950/30 transition">
-                              <Star size={17} />
+                              <Star size={17} fill={post.is_recommended ? 'currentColor' : 'none'} />
                             </span>
+                            <span className="text-xs">{post.recommendation_count || ''}</span>
                           </button>
                         )}
-                        <button className="flex items-center gap-1.5 text-okhovat-500 hover:text-okhovat-600 group">
+                        <button
+                          onClick={() => handleBookmark(post.id)}
+                          className={`flex items-center gap-1.5 group ${
+                            post.is_bookmarked
+                              ? 'text-okhovat-600'
+                              : 'text-okhovat-500 hover:text-okhovat-600'
+                          }`}
+                        >
                           <span className="p-1.5 rounded-full group-hover:bg-okhovat-50 dark:group-hover:bg-okhovat-900 transition">
-                            <Bookmark size={17} />
+                            <Bookmark size={17} fill={post.is_bookmarked ? 'currentColor' : 'none'} />
                           </span>
                         </button>
-                        <button className="flex items-center gap-1.5 text-okhovat-500 hover:text-okhovat-600 group">
+                        <button
+                          onClick={() => handleShare(post.id)}
+                          className="flex items-center gap-1.5 text-okhovat-500 hover:text-okhovat-600 group"
+                        >
                           <span className="p-1.5 rounded-full group-hover:bg-okhovat-50 dark:group-hover:bg-okhovat-900 transition">
                             <Share2 size={17} />
                           </span>
                         </button>
                       </div>
+
+                      {openComments === post.id && (
+                        <div className="mt-3 pt-3 border-t border-okhovat-100 dark:border-okhovat-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-okhovat-600">نظرات</span>
+                            <button onClick={() => setOpenComments(null)} className="text-okhovat-400">
+                              <X size={14} />
+                            </button>
+                          </div>
+                          {loadingComments ? (
+                            <Loader2 className="animate-spin text-okhovat-400 mx-auto my-3" size={18} />
+                          ) : (
+                            <div className="space-y-2 max-h-48 overflow-y-auto mb-2">
+                              {(comments[post.id] || []).length === 0 ? (
+                                <p className="text-xs text-okhovat-400">هنوز نظری نیست.</p>
+                              ) : (
+                                (comments[post.id] || []).map((c) => (
+                                  <div key={c.id} className="text-sm bg-okhovat-50 dark:bg-okhovat-900 rounded-xl px-3 py-2">
+                                    <span className="font-medium text-okhovat-800 dark:text-okhovat-100 text-xs">
+                                      {c.user?.full_name || 'کاربر'}
+                                    </span>
+                                    <p className="text-okhovat-600 dark:text-okhovat-300 text-sm mt-0.5">
+                                      {c.content}
+                                    </p>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                          <div className="flex gap-2">
+                            <input
+                              value={commentText}
+                              onChange={(e) => setCommentText(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && submitComment(post.id)}
+                              placeholder="نظر خود را بنویس..."
+                              className="input-field text-sm flex-1"
+                            />
+                            <button
+                              onClick={() => submitComment(post.id)}
+                              disabled={sendingComment || !commentText.trim()}
+                              className="btn-primary px-3 py-2 disabled:opacity-50"
+                            >
+                              {sendingComment ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Send size={16} />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.article>

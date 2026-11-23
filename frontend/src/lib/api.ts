@@ -153,6 +153,14 @@ export async function toggleLike(id: number) {
   return request(`/posts/${id}/like/`, { method: 'POST' })
 }
 
+export async function toggleRecommend(id: number) {
+  return request(`/posts/${id}/recommend/`, { method: 'POST' })
+}
+
+export async function toggleBookmark(id: number) {
+  return request(`/posts/${id}/bookmark/`, { method: 'POST' })
+}
+
 export async function getComments(postId: number) {
   return request(`/posts/${postId}/comments/`)
 }

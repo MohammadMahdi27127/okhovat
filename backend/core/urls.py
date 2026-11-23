@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
+from . import views_follow
 
 urlpatterns = [
     # Auth
@@ -35,9 +36,9 @@ urlpatterns = [
 
     # Users & Follow
     path('users/', views.UserListView.as_view(), name='user-list'),
-    path('users/<int:pk>/follow/', views.FollowToggleView.as_view(), name='user-follow'),
+    path('users/<int:pk>/follow/', views_follow.FollowToggleView.as_view(), name='user-follow'),
     path('users/<int:pk>/suspend/', views.SuspendUserView.as_view(), name='user-suspend'),
-    path('following/', views.FollowingListView.as_view(), name='following-list'),
+    path('following/', views_follow.FollowingListView.as_view(), name='following-list'),
 
     # Coach messages
     path('messages/', views.CoachMessageListCreateView.as_view(), name='message-list'),

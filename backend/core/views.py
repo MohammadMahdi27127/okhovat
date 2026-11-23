@@ -11,12 +11,12 @@ from django.db.models import Count, Q
 
 from .models import (
     User, Post, PostLike, PostComment, GrowthLog,
-    UserInteraction, Ring, Workgroup
+    UserInteraction, Ring, Workgroup, CoachMessage,
 )
 from .serializers import (
     UserSerializer, UserBriefSerializer, PostSerializer, PostCreateSerializer,
     PostCommentSerializer, GrowthLogSerializer, UserInteractionSerializer,
-    RingSerializer, WorkgroupSerializer
+    RingSerializer, WorkgroupSerializer, CoachMessageSerializer,
 )
 from .cache_utils import (
     cache_get, cache_set,
@@ -24,7 +24,6 @@ from .cache_utils import (
     invalidate_posts_cache, invalidate_rings_cache, invalidate_admin_stats,
 )
 
-# ویوهای تکمیلی
 from .views_extra import (
     ForgotPasswordView,
     ResetPasswordView,
@@ -246,6 +245,49 @@ class SuspendUserView(APIView):
         user.suspended_until = timezone.now() + timedelta(days=days)
         user.save(update_fields=['suspended_until'])
         return Response({'detail': f'کاربر به مدت {days} روز تعلیق شد'})
+
+
+class CoachMessageListCreateView(generics.ListCreateAPIView):
+    """
+    GET: عضو → پیام‌های دریافتی؛ مربی/ادمین → آرشیو ارسالی (یا با ?inbox=1 دریافتی)
+    POST: فقط مربی یا ادمین — ارسال به عضو
+    """
+    serializer_class = CoachMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = CoachMessage.objects.select_related('sender', 'recipient')
+        role_coach = getattr(user, 'is_coach', False) or getattr(user, 'is_admin', False)
+        inbox = self.request.query_params.get('inbox')
+        recipient_id = self.request.query_params.get('recipient')
+
+        if role_coach and inbox != '1':
+            qs = qs.filter(sender=user)
+            if recipient_id:
+                qs = qs.filter(recipient_id=recipient_id)
+            return qs
+        return qs.filter(recipient=user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not (getattr(user, 'is_coach', False) or getattr(user, 'is_admin', False)):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('فقط مربی یا ادمین می‌تواند پیام بفرستد')
+        serializer.save(sender=user)
+
+
+class CoachMessageMarkReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            msg = CoachMessage.objects.get(pk=pk, recipient=request.user)
+        except CoachMessage.DoesNotExist:
+            return Response({'detail': 'پیام یافت نشد'}, status=status.HTTP_404_NOT_FOUND)
+        msg.is_read = True
+        msg.save(update_fields=['is_read'])
+        return Response({'detail': 'خوانده شد', 'id': msg.id, 'is_read': True})
 
 
 class AdminStatsView(APIView):

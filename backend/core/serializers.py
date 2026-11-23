@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    User, Post, PostLike, PostComment, PostRecommendation,
+    User, Post, PostLike, PostComment, PostRecommendation, PostBookmark,
     GrowthLog, UserInteraction, Ring, Workgroup, CircleScoreLog,
     CoachMessage,
 )
@@ -63,6 +63,9 @@ class PostSerializer(serializers.ModelSerializer):
     related_ring = RingSerializer(read_only=True)
     related_workgroup = WorkgroupSerializer(read_only=True)
     is_liked = serializers.SerializerMethodField()
+    is_recommended = serializers.SerializerMethodField()
+    is_bookmarked = serializers.SerializerMethodField()
+    recommendation_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -70,15 +73,37 @@ class PostSerializer(serializers.ModelSerializer):
             'id', 'user', 'title', 'content', 'media', 'post_type',
             'related_ring', 'related_workgroup',
             'is_trending', 'like_count', 'comment_count',
-            'is_liked', 'created_at', 'updated_at'
+            'is_liked', 'is_recommended', 'is_bookmarked',
+            'recommendation_count',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'user', 'like_count', 'comment_count', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'user', 'like_count', 'comment_count',
+            'created_at', 'updated_at',
+        ]
 
     def get_is_liked(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             return PostLike.objects.filter(post=obj, user=request.user).exists()
         return False
+
+    def get_is_recommended(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return PostRecommendation.objects.filter(
+                post=obj, recommended_by=request.user
+            ).exists()
+        return False
+
+    def get_is_bookmarked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return PostBookmark.objects.filter(post=obj, user=request.user).exists()
+        return False
+
+    def get_recommendation_count(self, obj):
+        return obj.recommendations.count()
 
 
 class PostCreateSerializer(serializers.ModelSerializer):

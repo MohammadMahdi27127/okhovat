@@ -17,6 +17,8 @@ urlpatterns = [
     path('posts/<int:pk>/', views.PostDetailView.as_view(), name='post-detail'),
     path('posts/<int:pk>/like/', views.PostLikeToggleView.as_view(), name='post-like'),
     path('posts/<int:pk>/comments/', views.PostCommentListCreateView.as_view(), name='post-comments'),
+    path('posts/<int:pk>/recommend/', views.PostRecommendToggleView.as_view(), name='post-recommend'),
+    path('posts/<int:pk>/bookmark/', views.PostBookmarkToggleView.as_view(), name='post-bookmark'),
 
     # Growth
     path('growth/', views.GrowthLogListCreateView.as_view(), name='growth-list'),

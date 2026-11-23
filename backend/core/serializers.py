@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     User, Post, PostLike, PostComment, PostRecommendation,
-    GrowthLog, UserInteraction, Ring, Workgroup, CircleScoreLog
+    GrowthLog, UserInteraction, Ring, Workgroup, CircleScoreLog,
+    CoachMessage,
 )
 
 
@@ -126,3 +127,21 @@ class CircleScoreLogSerializer(serializers.ModelSerializer):
             'coach_score', 'attendance_avg', 'external_likes',
             'total_score', 'rank', 'created_at'
         ]
+
+
+class CoachMessageSerializer(serializers.ModelSerializer):
+    sender = UserBriefSerializer(read_only=True)
+    recipient = UserBriefSerializer(read_only=True)
+    recipient_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        source='recipient',
+        write_only=True,
+    )
+
+    class Meta:
+        model = CoachMessage
+        fields = [
+            'id', 'sender', 'recipient', 'recipient_id',
+            'body', 'is_read', 'created_at',
+        ]
+        read_only_fields = ['id', 'sender', 'is_read', 'created_at']

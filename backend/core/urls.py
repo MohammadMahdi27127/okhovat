@@ -31,6 +31,10 @@ urlpatterns = [
     path('users/', views.UserListView.as_view(), name='user-list'),
     path('users/<int:pk>/suspend/', views.SuspendUserView.as_view(), name='user-suspend'),
 
+    # Coach messages
+    path('messages/', views.CoachMessageListCreateView.as_view(), name='message-list'),
+    path('messages/<int:pk>/read/', views.CoachMessageMarkReadView.as_view(), name='message-read'),
+
     # Admin
     path('admin/stats/', views.AdminStatsView.as_view(), name='admin-stats'),
 

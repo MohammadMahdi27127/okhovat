@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, Ring, Workgroup, Post, PostLike, PostComment,
-    PostRecommendation, GrowthLog, UserInteraction, Reel, AIUsageLog
+    PostRecommendation, GrowthLog, UserInteraction, Reel, AIUsageLog,
+    CoachMessage,
 )
 
 
@@ -28,6 +29,13 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('group_code', 'full_name', 'password1', 'password2'),
         }),
     )
+
+
+@admin.register(CoachMessage)
+class CoachMessageAdmin(admin.ModelAdmin):
+    list_display = ('sender', 'recipient', 'is_read', 'created_at')
+    list_filter = ('is_read',)
+    search_fields = ('body', 'sender__full_name', 'recipient__full_name')
 
 
 admin.site.register(Ring)

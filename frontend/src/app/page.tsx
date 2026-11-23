@@ -5,7 +5,8 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Preloader from '@/components/Preloader'
 import LoginModal from '@/components/LoginModal'
-import { Home, FileText, PlusCircle, TrendingUp, User, LogIn } from 'lucide-react'
+import AppShell from '@/components/AppShell'
+import { MessageCircle, Calendar, Users, BookOpen, TrendingUp, ChevronLeft } from 'lucide-react'
 
 export default function HomePage() {
   const [loading, setLoading] = useState(true)
@@ -16,127 +17,171 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-l border-slate-200 flex flex-col fixed right-0 top-0 bottom-0 z-40">
-        <div className="p-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-okhovat-600 flex items-center justify-center text-white font-bold text-lg">
+    <AppShell onLoginClick={() => setShowLogin(true)}>
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        {/* Page title */}
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xl font-bold text-okhovat-800 dark:text-okhovat-100 mb-4"
+        >
+          خانهٔ اخوت
+        </motion.h1>
+
+        {/* Welcome Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-okhovat-500 rounded-2xl p-5 md:p-6 text-white mb-6 shadow-lg relative overflow-hidden"
+        >
+          <div className="absolute -left-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10" />
+          <div className="relative flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
               ا
             </div>
-            <div>
-              <h1 className="font-bold text-okhovat-800 text-lg">اخوت</h1>
-              <p className="text-xs text-slate-500">کنار هم، رو به رشد</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-3 space-y-1">
-          <NavItem href="/" icon={<Home size={20} />} label="خانهٔ اخوت" active />
-          <NavItem href="/posts" icon={<FileText size={20} />} label="پست‌ها" />
-          <NavItem href="/new-post" icon={<PlusCircle size={20} />} label="پست جدید" />
-          <NavItem href="/growth" icon={<TrendingUp size={20} />} label="رشد فردی" />
-          <NavItem href="/profile" icon={<User size={20} />} label="پروفایل من" />
-        </nav>
-
-        <div className="p-4 border-t border-slate-100 space-y-3">
-          <button
-            onClick={() => setShowLogin(true)}
-            className="w-full flex items-center justify-center gap-2 bg-okhovat-600 hover:bg-okhovat-700 text-white text-sm font-medium py-2.5 rounded-xl transition"
-          >
-            <LogIn size={16} />
-            ورود به اخوت
-          </button>
-          <div className="text-xs text-slate-500">
-            <p>گروه اخوت</p>
-            <p className="mt-1">۶۰ همراه، یک مسیر مشترک</p>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 mr-64 p-6">
-        <div className="max-w-5xl mx-auto">
-          {/* Welcome Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="bg-gradient-to-l from-okhovat-700 to-okhovat-600 rounded-2xl p-6 text-white mb-6 shadow-lg"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center text-2xl">
-                🤖
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold mb-1">سلام دوست عزیز</h2>
-                <p className="text-okhovat-100 leading-relaxed">
-                  به سامانهٔ ما خوش آمدی. اگر کمکی خواستی بهم بگو.
-                </p>
-                <div className="mt-4 flex gap-3">
-                  <button className="bg-amber-400 hover:bg-amber-300 text-okhovat-900 px-4 py-2 rounded-lg text-sm font-medium transition">
-                    گفت‌وگو با همراه اخوت
-                  </button>
-                  <button
-                    onClick={() => setShowLogin(true)}
-                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                  >
-                    ورود به حساب
-                  </button>
-                </div>
+            <div className="flex-1">
+              <h2 className="text-lg md:text-xl font-bold mb-1">سلام دوست عزیز</h2>
+              <p className="text-okhovat-100 text-sm leading-relaxed">
+                به سامانهٔ اخوت خوش آمدی. اگر کمکی خواستی، همراه اخوت اینجاست.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="#assistant"
+                  className="inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 text-okhovat-900 px-4 py-2 rounded-xl text-sm font-medium transition"
+                >
+                  <MessageCircle size={16} />
+                  گفت‌وگو با همراه اخوت
+                </Link>
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-medium transition"
+                >
+                  ورود به حساب
+                </button>
               </div>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
 
-          {/* Placeholder cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <PlaceholderCard title="قرار این هفته" />
-            <PlaceholderCard title="حلقه‌های پیشرو" />
-            <PlaceholderCard title="محتوای کارگروه‌ها" />
-            <PlaceholderCard title="گزارش روزانه" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Main column */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Weekly programs */}
+            <Section
+              title="برنامه‌های هفته"
+              icon={<Calendar size={18} />}
+              emptyMessage="برنامه‌ای برای این هفته ثبت نشده است."
+            >
+              <ProgramCard
+                title="جلسه حلقه سلمان"
+                desc="چهارشنبه ساعت ۱۹ — موضوع: نظم فردی"
+                href="/workgroup/salman"
+              />
+              <ProgramCard
+                title="کارگروه آموزش"
+                desc="پنج‌شنبه ساعت ۱۷ — مرور محتوا"
+                href="/workgroup/education"
+              />
+            </Section>
+
+            {/* Workgroup content */}
+            <Section
+              title="محتوای کارگروه‌ها"
+              icon={<BookOpen size={18} />}
+              emptyMessage="محتوایی هنوز منتشر نشده است."
+            >
+              <ProgramCard
+                title="خلاصه جلسه آموزش"
+                desc="نکات کلیدی هفته گذشته"
+                href="/workgroup/education"
+              />
+            </Section>
+          </div>
+
+          {/* Side column (desktop) */}
+          <div className="space-y-5">
+            <Section
+              title="گزارش روزانه"
+              icon={<TrendingUp size={18} />}
+              emptyMessage="هنوز گزارشی ثبت نکرده‌ای."
+            >
+              <Link
+                href="/growth"
+                className="block p-4 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 hover:bg-okhovat-100 dark:hover:bg-okhovat-800 transition text-sm text-okhovat-700 dark:text-okhovat-200"
+              >
+                ثبت رشد امروز →
+              </Link>
+            </Section>
+
+            <Section
+              title="حلقه‌های پیشرو"
+              icon={<Users size={18} />}
+              emptyMessage="داده‌ای موجود نیست."
+            >
+              <div className="space-y-2">
+                {[ 'سلمان', 'ابوذر', 'مقداد' ].map((name, i) => (
+                  <div key={name} className="flex items-center justify-between p-2.5 rounded-xl bg-okhovat-50/80 dark:bg-okhovat-900/60">
+                    <span className="text-sm text-okhovat-800 dark:text-okhovat-200">{name}</span>
+                    <span className="text-xs font-medium text-okhovat-500">{92 - i * 5}٪</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Login Modal */}
       <LoginModal
         isOpen={showLogin}
         onClose={() => setShowLogin(false)}
-        onLoginSuccess={() => {
-          // بعداً state کاربر رو ست می‌کنیم
-          setShowLogin(false)
-        }}
+        onLoginSuccess={() => setShowLogin(false)}
       />
-    </div>
+    </AppShell>
   )
 }
 
-function NavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
+function Section({
+  title,
+  icon,
+  children,
+  emptyMessage,
+}: {
+  title: string
+  icon: React.ReactNode
+  children?: React.ReactNode
+  emptyMessage?: string
+}) {
+  const hasContent = !!children
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="card p-5"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-okhovat-500">{icon}</span>
+        <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100">{title}</h3>
+      </div>
+      {hasContent ? children : (
+        <p className="text-sm text-okhovat-500 dark:text-okhovat-400 py-2">{emptyMessage}</p>
+      )}
+    </motion.section>
+  )
+}
+
+function ProgramCard({ title, desc, href }: { title: string; desc: string; href: string }) {
   return (
     <Link
       href={href}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-        active
-          ? 'bg-okhovat-50 text-okhovat-700'
-          : 'text-slate-600 hover:bg-slate-50'
-      }`}
+      className="flex items-center justify-between p-3.5 rounded-xl bg-okhovat-50/80 dark:bg-okhovat-900/50 hover:bg-okhovat-100 dark:hover:bg-okhovat-800 transition group mb-2 last:mb-0"
     >
-      {icon}
-      {label}
+      <div>
+        <p className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">{title}</p>
+        <p className="text-xs text-okhovat-500 dark:text-okhovat-400 mt-0.5">{desc}</p>
+      </div>
+      <ChevronLeft size={16} className="text-okhovat-400 group-hover:text-okhovat-600 transition" />
     </Link>
-  )
-}
-
-function PlaceholderCard({ title }: { title: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm"
-    >
-      <h3 className="font-semibold text-slate-800 mb-2">{title}</h3>
-      <p className="text-sm text-slate-500">به زودی محتوا اضافه می‌شود...</p>
-    </motion.div>
   )
 }

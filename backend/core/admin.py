@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, Ring, Workgroup, Post, PostLike, PostComment,
-    PostRecommendation, GrowthLog, UserInteraction, Reel, AIUsageLog,
-    CoachMessage,
+    PostRecommendation, PostBookmark, GrowthLog, UserInteraction, Reel, AIUsageLog,
+    CoachMessage, Follow,
 )
 
 
@@ -16,7 +16,7 @@ class UserAdmin(BaseUserAdmin):
 
     fieldsets = (
         (None, {'fields': ('group_code', 'password')}),
-        ('اطلاعات شخصی', {'fields': ('full_name', 'avatar', 'bale_id')}),
+        ('اطلاعات شخصی', {'fields': ('full_name', 'avatar', 'bale_id', 'sport_plan', 'book_plan')}),
         ('نقش‌ها', {'fields': ('is_admin', 'is_coach', 'is_ring_leader', 'is_workgroup_leader', 'is_resolution_officer', 'is_concerned_member')}),
         ('تشکیلات', {'fields': ('ring', 'workgroup')}),
         ('وضعیت', {'fields': ('attendance_percentage', 'activity_level', 'suspended_until', 'is_active', 'is_staff')}),
@@ -38,6 +38,12 @@ class CoachMessageAdmin(admin.ModelAdmin):
     search_fields = ('body', 'sender__full_name', 'recipient__full_name')
 
 
+@admin.register(Follow)
+class FollowAdmin(admin.ModelAdmin):
+    list_display = ('follower', 'following', 'created_at')
+    search_fields = ('follower__full_name', 'following__full_name')
+
+
 admin.site.register(Ring)
 admin.site.register(Workgroup)
 admin.site.register(Post)
@@ -45,3 +51,4 @@ admin.site.register(GrowthLog)
 admin.site.register(UserInteraction)
 admin.site.register(Reel)
 admin.site.register(AIUsageLog)
+admin.site.register(PostBookmark)

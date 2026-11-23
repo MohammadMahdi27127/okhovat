@@ -42,6 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_resolution_officer', 'is_concerned_member',
             'ring', 'workgroup',
             'attendance_percentage', 'activity_level',
+            'sport_plan', 'book_plan',
             'posts_count', 'growth_logs_count',
             'followers_count', 'following_count',
             'is_active', 'created_at'
@@ -147,7 +148,7 @@ class GrowthLogSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'date', 'sport_hours', 'study_pages',
             'group_responsibility', 'personal_skill', 'leisure',
-            'extra_data', 'created_at'
+            'skill_document', 'extra_data', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 

@@ -2,249 +2,118 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { 
-  Home, FileText, PlusCircle, TrendingUp, User,
-  Camera, Settings, Award, Users, Activity,
-  MessageSquare, CheckSquare, ChevronLeft
+import AppShell from '@/components/AppShell'
+import {
+  Camera, LogOut, BookOpen, Dumbbell, MessageSquare, Users
 } from 'lucide-react'
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState('overview')
-
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-l border-slate-200 flex flex-col fixed right-0 top-0 bottom-0 z-40">
-        <div className="p-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-okhovat-600 flex items-center justify-center text-white font-bold text-lg">
-              ا
-            </div>
-            <div>
-              <h1 className="font-bold text-okhovat-800 text-lg">اخوت</h1>
-              <p className="text-xs text-slate-500">کنار هم، رو به رشد</p>
+    <AppShell>
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
+            <h1 className="text-xl font-bold text-okhovat-800 dark:text-okhovat-100">پروفایل</h1>
+            <button className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 transition">
+              <LogOut size={16} />
+              خروج
+            </button>
+          </div>
+
+          {/* Intro Card */}
+          <div className="card p-5 mb-4">
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <div className="w-20 h-20 rounded-2xl bg-okhovat-500 flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                  عم
+                </div>
+                <button className="absolute -bottom-1 -left-1 w-7 h-7 bg-white dark:bg-okhovat-800 rounded-full border border-okhovat-100 dark:border-okhovat-700 flex items-center justify-center shadow-sm">
+                  <Camera size={13} className="text-okhovat-600 dark:text-okhovat-300" />
+                </button>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-okhovat-800 dark:text-okhovat-100">علی محمدی</h2>
+                <p className="text-sm text-okhovat-500 dark:text-okhovat-400 mt-0.5">کد گروهی: ۱۰۲۴ · حلقه سلمان</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          <NavItem href="/" icon={<Home size={20} />} label="خانهٔ اخوت" />
-          <NavItem href="/posts" icon={<FileText size={20} />} label="پست‌ها" />
-          <NavItem href="/new-post" icon={<PlusCircle size={20} />} label="پست جدید" />
-          <NavItem href="/growth" icon={<TrendingUp size={20} />} label="رشد فردی" />
-          <NavItem href="/profile" icon={<User size={20} />} label="پروفایل من" active />
-        </nav>
+          {/* Four independent stat boxes */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <StatBox label="پست" value="۱۲" />
+            <StatBox label="دنبال‌کننده" value="۴۸" />
+            <StatBox label="دنبال‌شونده" value="۳۲" />
+            <StatBox label="گزارش رشد" value="۲۷" />
+          </div>
 
-        <div className="p-4 border-t border-slate-100 text-xs text-slate-500">
-          <p>گروه اخوت</p>
-          <p className="mt-1">۶۰ همراه، یک مسیر مشترک</p>
-        </div>
-      </aside>
+          {/* Attendance card */}
+          <div className="card p-5 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={18} className="text-okhovat-500" />
+              <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100">حضور</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 text-center">
+                <p className="text-xl font-bold text-okhovat-700 dark:text-okhovat-200">۸۶٪</p>
+                <p className="text-xs text-okhovat-500 mt-0.5">حضور من</p>
+              </div>
+              <div className="p-3 rounded-xl bg-okhovat-50 dark:bg-okhovat-900 text-center">
+                <p className="text-xl font-bold text-okhovat-700 dark:text-okhovat-200">۷۸٪</p>
+                <p className="text-xs text-okhovat-500 mt-0.5">میانگین حلقه</p>
+              </div>
+            </div>
+          </div>
 
-      {/* Main Content */}
-      <main className="flex-1 mr-64">
-        <div className="max-w-3xl mx-auto py-6 px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {/* Profile Header */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-5">
-              <div className="h-28 bg-gradient-to-l from-okhovat-600 to-okhovat-700"></div>
-              <div className="px-6 pb-5 -mt-12">
-                <div className="flex items-end justify-between">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-2xl bg-okhovat-500 border-4 border-white flex items-center justify-center text-white text-3xl font-bold shadow-md">
-                      عم
-                    </div>
-                    <button className="absolute bottom-0 left-0 w-8 h-8 bg-white rounded-full border border-slate-200 flex items-center justify-center shadow-sm hover:bg-slate-50">
-                      <Camera size={14} className="text-slate-600" />
-                    </button>
-                  </div>
-                  <button className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-okhovat-700 border border-slate-200 px-3 py-1.5 rounded-lg">
-                    <Settings size={16} />
-                    تنظیمات
-                  </button>
+          {/* My Status */}
+          <div className="card p-5 mb-4">
+            <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100 mb-3">وضعیت من</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-okhovat-50 dark:bg-okhovat-900">
+                <div className="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+                  <Dumbbell size={16} className="text-orange-600" />
                 </div>
-
-                <div className="mt-3">
-                  <h1 className="text-xl font-bold text-slate-800">علی محمدی</h1>
-                  <p className="text-sm text-slate-500">کد گروهی: ۱۰۲۴ · حلقه سلمان</p>
+                <div>
+                  <p className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">برنامه ورزشی</p>
+                  <p className="text-xs text-okhovat-500">هنوز تنظیم نشده</p>
                 </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-4 gap-3 mt-5">
-                  <StatBox label="حضور" value="۸۶٪" />
-                  <StatBox label="دنبال‌کننده" value="۴۸" />
-                  <StatBox label="دنبال‌شونده" value="۳۲" />
-                  <StatBox label="پست" value="۱۲" />
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-okhovat-50 dark:bg-okhovat-900">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                  <BookOpen size={16} className="text-blue-600" />
                 </div>
-
-                {/* Level */}
-                <div className="mt-4 p-3 bg-okhovat-50 rounded-xl flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-okhovat-100 flex items-center justify-center">
-                    <Award size={20} className="text-okhovat-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-okhovat-800">سطح ۳ · همراه پیگیر</p>
-                    <div className="mt-1 h-2 bg-okhovat-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-okhovat-500 rounded-full" style={{ width: '65%' }}></div>
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium text-okhovat-800 dark:text-okhovat-100">کتاب در حال مطالعه</p>
+                  <p className="text-xs text-okhovat-500">هنوز انتخاب نشده</p>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Tabs */}
-            <div className="flex gap-2 mb-5 overflow-x-auto">
-              {['نمای کلی', 'وضعیت حلقه', 'وضعیت کارگروه', 'مصوبات', 'پیام مربی'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                    activeTab === tab
-                      ? 'bg-okhovat-600 text-white'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+          {/* Coach messages */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare size={18} className="text-okhovat-500" />
+              <h3 className="font-semibold text-okhovat-800 dark:text-okhovat-100">پیام‌های مربی</h3>
             </div>
-
-            {/* Content based on tab */}
-            <div className="space-y-4">
-              {/* Circle Status */}
-              <SectionCard title="وضعیت حلقه" icon={<Users size={18} />}>
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-lg font-bold text-slate-800">۷۸٪</p>
-                    <p className="text-xs text-slate-500">درصد حضور</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-lg font-bold text-slate-800">۸.۴</p>
-                    <p className="text-xs text-slate-500">نمره حلقه</p>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-lg font-bold text-okhovat-600">۲</p>
-                    <p className="text-xs text-slate-500">رتبه بین حلقه‌ها</p>
-                  </div>
-                </div>
-                <button className="mt-3 text-sm text-okhovat-600 flex items-center gap-1 hover:underline">
-                  رتبه‌بندی اعضای حلقه
-                  <ChevronLeft size={14} />
-                </button>
-              </SectionCard>
-
-              {/* Workgroup Status */}
-              <SectionCard title="وضعیت کارگروه" icon={<Activity size={18} />}>
-                <p className="text-sm text-slate-600 mb-2">کارگروه: <span className="font-medium">آموزش</span></p>
-                <div className="space-y-2">
-                  {['علی محمدی', 'حسین احمدی', 'مهدی کریمی'].map((name, i) => (
-                    <div key={name} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
-                      <span className="text-sm text-slate-700">{name}</span>
-                      <span className="text-xs text-slate-500">{90 - i * 12}٪ فعالیت</span>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
-
-              {/* Coach Message */}
-              <SectionCard title="پیام مربی" icon={<MessageSquare size={18} />}>
-                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
-                  <p className="text-sm text-amber-900 leading-relaxed">
-                    علی جان، پیشرفت خوبی در مطالعه داشتی این هفته. سعی کن منظم‌تر فرم رشد رو پر کنی. موفق باشی 🌟
-                  </p>
-                  <p className="text-xs text-amber-600 mt-2">مربی احمدی · ۲ روز پیش</p>
-                </div>
-              </SectionCard>
-
-              {/* Resolutions */}
-              <SectionCard title="مصوبات" icon={<CheckSquare size={18} />}>
-                <div className="space-y-2">
-                  <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
-                    <input type="checkbox" className="mt-0.5 rounded text-okhovat-600 focus:ring-okhovat-500" />
-                    <div>
-                      <p className="text-sm text-slate-800">هماهنگی جلسه هفتگی حلقه تا چهارشنبه</p>
-                      <p className="text-xs text-slate-500 mt-0.5">مربوط به حلقه سلمان</p>
-                    </div>
-                  </label>
-                  <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition">
-                    <input type="checkbox" defaultChecked className="mt-0.5 rounded text-okhovat-600 focus:ring-okhovat-500" />
-                    <div>
-                      <p className="text-sm text-slate-800 line-through opacity-60">ارسال گزارش ماهانه کارگروه</p>
-                      <p className="text-xs text-slate-500 mt-0.5">مربوط به کارگروه آموزش</p>
-                    </div>
-                  </label>
-                </div>
-              </SectionCard>
-
-              {/* Change Password */}
-              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-                <h3 className="font-semibold text-slate-800 mb-3">تغییر رمز عبور</h3>
-                <div className="space-y-3">
-                  <input
-                    type="password"
-                    placeholder="رمز فعلی"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
-                  />
-                  <input
-                    type="password"
-                    placeholder="رمز جدید"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
-                  />
-                  <input
-                    type="password"
-                    placeholder="تکرار رمز جدید"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-okhovat-500"
-                  />
-                  <button className="bg-okhovat-600 hover:bg-okhovat-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">
-                    ذخیره رمز جدید
-                  </button>
-                </div>
-              </div>
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40">
+              <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed">
+                علی جان، پیشرفت خوبی در مطالعه داشتی این هفته. سعی کن منظم‌تر فرم رشد رو پر کنی. موفق باشی 🌟
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">مربی احمدی · ۲ روز پیش</p>
             </div>
-          </motion.div>
-        </div>
-      </main>
-    </div>
-  )
-}
-
-function NavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-        active
-          ? 'bg-okhovat-50 text-okhovat-700'
-          : 'text-slate-600 hover:bg-slate-50'
-      }`}
-    >
-      {icon}
-      {label}
-    </Link>
+          </div>
+        </motion.div>
+      </div>
+    </AppShell>
   )
 }
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-center p-2">
-      <p className="text-lg font-bold text-slate-800">{value}</p>
-      <p className="text-xs text-slate-500">{label}</p>
-    </div>
-  )
-}
-
-function SectionCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-okhovat-600">{icon}</span>
-        <h3 className="font-semibold text-slate-800">{title}</h3>
-      </div>
-      {children}
+    <div className="card p-3.5 text-center">
+      <p className="text-xl font-bold text-okhovat-700 dark:text-okhovat-200">{value}</p>
+      <p className="text-xs text-okhovat-500 dark:text-okhovat-400 mt-0.5">{label}</p>
     </div>
   )
 }

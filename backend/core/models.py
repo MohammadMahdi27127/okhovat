@@ -98,7 +98,7 @@ class WorkgroupContent(models.Model):
     title = models.CharField(max_length=200, blank=True)
     body = models.TextField(blank=True)
     media = models.FileField(upload_to='workgroups/', null=True, blank=True)
-    data = models.JSONField(default=dict, blank=True)  # لیست افراد، هزینه‌ها و ...
+    data = models.JSONField(default=dict, blank=True)
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -153,7 +153,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class PasswordResetOTP(models.Model):
-    """کد ۴ رقمی بازیابی رمز از طریق بله"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_otps')
     code = models.CharField(max_length=4)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -309,3 +308,24 @@ class AIUsageLog(models.Model):
 
     class Meta:
         verbose_name = 'لاگ هوش مصنوعی'
+
+
+class CoachMessage(models.Model):
+    """پیام مربی به عضو"""
+    sender = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='messages_sent', verbose_name='فرستنده'
+    )
+    recipient = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='messages_received', verbose_name='گیرنده'
+    )
+    body = models.TextField(verbose_name='متن پیام')
+    is_read = models.BooleanField(default=False, verbose_name='خوانده‌شده')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'پیام مربی'
+        verbose_name_plural = 'پیام‌های مربی'
+
+    def __str__(self):
+        return f'{self.sender} → {self.recipient}: {self.body[:40]}'

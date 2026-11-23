@@ -107,10 +107,11 @@ export async function uploadAvatar(file: File) {
 }
 
 // Posts
-export async function getPosts(params?: { type?: string; trending?: boolean }) {
+export async function getPosts(params?: { type?: string; trending?: boolean; following?: boolean }) {
   const q = new URLSearchParams()
   if (params?.type) q.set('type', params.type)
   if (params?.trending) q.set('trending', '1')
+  if (params?.following) q.set('following', '1')
   const query = q.toString() ? `?${q}` : ''
   return request(`/posts/${query}`)
 }
@@ -170,6 +171,15 @@ export async function addComment(postId: number, content: string) {
     method: 'POST',
     body: JSON.stringify({ content }),
   })
+}
+
+// Follow
+export async function toggleFollow(userId: number) {
+  return request(`/users/${userId}/follow/`, { method: 'POST' })
+}
+
+export async function getFollowing() {
+  return request('/following/')
 }
 
 // Growth

@@ -1,7 +1,7 @@
 """
 سرویس ارسال پیام به پیام‌رسان بله
 
-برای فعال‌سازی:
+برای فعال‌سازی در پروداکشن:
 1. از @botfather در بله یک ربات بسازید و توکن بگیرید
 2. BALE_BOT_TOKEN را در .env قرار دهید
 3. BALE_ENABLED=True
@@ -21,10 +21,7 @@ BALE_API_BASE = os.getenv('BALE_API_BASE', 'https://tapi.bale.ai')
 
 
 def send_bale_message(chat_id: str, text: str) -> bool:
-    """
-    ارسال پیام متنی به یک کاربر بله.
-    chat_id معمولاً همان bale_id کاربر است.
-    """
+    """ارسال پیام متنی به یک کاربر بله."""
     if not BALE_ENABLED:
         logger.info(f'[Bale disabled] Would send to {chat_id}: {text[:80]}...')
         return False
@@ -73,4 +70,9 @@ def send_coach_reminder(bale_id: str) -> bool:
         'امروز هنوز وارد سامانه اخوت نشده‌اید.\n'
         'لطفاً وضعیت اعضا و پست‌ها را بررسی کنید.'
     )
+    return send_bale_message(bale_id, text)
+
+
+def notify_new_message(bale_id: str, preview: str) -> bool:
+    text = f'📩 پیام جدید از مربی در اخوت\n\n{preview[:200]}'
     return send_bale_message(bale_id, text)

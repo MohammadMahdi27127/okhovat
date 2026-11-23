@@ -92,7 +92,6 @@ class Workgroup(models.Model):
 
 
 class WorkgroupContent(models.Model):
-    """محتوای قابل نمایش در صفحه کارگروه (ثبت‌شده توسط مسئول)"""
     workgroup = models.ForeignKey(Workgroup, on_delete=models.CASCADE, related_name='contents')
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True)
     title = models.CharField(max_length=200, blank=True)
@@ -247,6 +246,17 @@ class PostRecommendation(models.Model):
 
     class Meta:
         unique_together = ('post', 'recommended_by')
+        verbose_name = 'پیشنهاد به مربی'
+
+
+class PostBookmark(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='bookmarks')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user')
+        verbose_name = 'ذخیره پست'
 
 
 class GrowthLog(models.Model):
@@ -311,7 +321,6 @@ class AIUsageLog(models.Model):
 
 
 class CoachMessage(models.Model):
-    """پیام مربی به عضو"""
     sender = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='messages_sent', verbose_name='فرستنده'
     )

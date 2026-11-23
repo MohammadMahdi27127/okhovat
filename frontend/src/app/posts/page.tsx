@@ -7,11 +7,11 @@ import AppShell from '@/components/AppShell'
 import {
   Heart, MessageCircle, Share2, Bookmark,
   Sparkles, Loader2,
-  PlusCircle, Film, Star, Send, X
+  PlusCircle, Film, Star, Send, X, UserPlus, UserCheck
 } from 'lucide-react'
 import {
   getPosts, toggleLike, toggleRecommend, toggleBookmark,
-  getComments, addComment,
+  getComments, addComment, toggleFollow, getUser,
 } from '@/lib/api'
 
 function timeAgo(dateStr: string) {
@@ -35,6 +35,7 @@ export default function PostsPage() {
   const [loadingComments, setLoadingComments] = useState(false)
   const [sendingComment, setSendingComment] = useState(false)
   const [toast, setToast] = useState('')
+  const me = typeof window !== 'undefined' ? getUser() : null
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -47,6 +48,7 @@ export default function PostsPage() {
     try {
       const params: any = {}
       if (activeTab === 'پست‌های ترند شده') params.trending = true
+      if (activeTab === 'دنبال‌شده‌ها') params.following = true
       const data = await getPosts(params)
       setPosts(data.results || data || [])
     } catch (err: any) {
@@ -106,6 +108,22 @@ export default function PostsPage() {
       showToast(res.bookmarked ? 'ذخیره شد' : 'از ذخیره‌ها حذف شد')
     } catch {
       showToast('برای ذخیره وارد شوید')
+    }
+  }
+
+  const handleFollow = async (userId: number) => {
+    try {
+      const res = await toggleFollow(userId)
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.user?.id === userId
+            ? { ...p, user: { ...p.user, is_following: res.following } }
+            : p
+        )
+      )
+      showToast(res.following ? 'دنبال شد' : 'لغو دنبال')
+    } catch {
+      showToast('برای دنبال کردن وارد شوید')
     }
   }
 
@@ -225,8 +243,8 @@ export default function PostsPage() {
         )}
 
         {activeTab === 'دنبال‌شده‌ها' && (
-          <div className="px-4 py-2.5 text-xs text-okhovat-400 border-b border-okhovat-100 dark:border-okhovat-800">
-            تب دنبال‌شده‌ها پس از مدل Follow فعال می‌شود — فعلاً همان فید کلی.
+          <div className="px-4 py-2.5 text-xs text-okhovat-500 border-b border-okhovat-100 dark:border-okhovat-800">
+            فقط پست‌های کسانی که دنبال می‌کنی
           </div>
         )}
 
@@ -240,13 +258,18 @@ export default function PostsPage() {
             <button onClick={loadPosts} className="mt-3 text-okhovat-600 hover:underline">تلاش مجدد</button>
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-16 text-okhovat-400 text-sm">هنوز پستی منتشر نشده</div>
+          <div className="text-center py-16 text-okhovat-400 text-sm">
+            {activeTab === 'دنبال‌شده‌ها'
+              ? 'هنوز کسی را دنبال نکرده‌ای یا پستی ندارند.'
+              : 'هنوز پستی منتشر نشده'}
+          </div>
         ) : (
           <div>
             {posts.map((post: any, index: number) => {
               const isCoach = post.post_type === 'coach' || post.user?.is_coach
               const name = post.user?.full_name || 'کاربر'
               const initial = name[0] || '?'
+              const canFollow = post.user?.id && me?.id && post.user.id !== me.id
               return (
                 <motion.article
                   key={post.id}
@@ -269,6 +292,23 @@ export default function PostsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-okhovat-800 dark:text-okhovat-100 text-[15px]">{name}</span>
+                        {canFollow && (
+                          <button
+                            type="button"
+                            onClick={() => handleFollow(post.user.id)}
+                            className={`text-[11px] px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${
+                              post.user?.is_following
+                                ? 'border-okhovat-300 text-okhovat-600 bg-okhovat-50 dark:bg-okhovat-900'
+                                : 'border-okhovat-500 text-okhovat-600 hover:bg-okhovat-50'
+                            }`}
+                          >
+                            {post.user?.is_following ? (
+                              <><UserCheck size={12} /> دنبال می‌کنی</>
+                            ) : (
+                              <><UserPlus size={12} /> دنبال</>
+                            )}
+                          </button>
+                        )}
                         {isCoach && (
                           <span className="text-[11px] bg-gold-500/15 text-gold-600 dark:text-gold-400 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
                             <Star size={10} /> پست مربی
@@ -363,9 +403,7 @@ export default function PostsPage() {
                                     <span className="font-medium text-okhovat-800 dark:text-okhovat-100 text-xs">
                                       {c.user?.full_name || 'کاربر'}
                                     </span>
-                                    <p className="text-okhovat-600 dark:text-okhovat-300 text-sm mt-0.5">
-                                      {c.content}
-                                    </p>
+                                    <p className="text-okhovat-600 dark:text-okhovat-300 text-sm mt-0.5">{c.content}</p>
                                   </div>
                                 ))
                               )}
@@ -384,11 +422,7 @@ export default function PostsPage() {
                               disabled={sendingComment || !commentText.trim()}
                               className="btn-primary px-3 py-2 disabled:opacity-50"
                             >
-                              {sendingComment ? (
-                                <Loader2 size={16} className="animate-spin" />
-                              ) : (
-                                <Send size={16} />
-                              )}
+                              {sendingComment ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                             </button>
                           </div>
                         </div>

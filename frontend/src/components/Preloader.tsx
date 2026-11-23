@@ -12,7 +12,7 @@ export default function Preloader({ onComplete }: PreloaderProps) {
   const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
-    const duration = 2200 // ms
+    const duration = 2000
     const interval = 30
     const steps = duration / interval
     let current = 0
@@ -26,8 +26,8 @@ export default function Preloader({ onComplete }: PreloaderProps) {
         clearInterval(timer)
         setTimeout(() => {
           setIsVisible(false)
-          setTimeout(onComplete, 400)
-        }, 300)
+          setTimeout(onComplete, 350)
+        }, 250)
       }
     }, interval)
 
@@ -40,25 +40,32 @@ export default function Preloader({ onComplete }: PreloaderProps) {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+          transition={{ duration: 0.35 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#031512]"
         >
           <div className="text-center">
             <motion.h1
-              initial={{ color: '#222222' }}
-              animate={{ color: progress > 80 ? '#ffffff' : `rgb(${34 + progress * 2}, ${34 + progress * 2}, ${34 + progress * 2})` }}
-              transition={{ duration: 0.1 }}
-              className="text-6xl md:text-8xl font-bold tracking-tight"
+              initial={{ opacity: 0.3, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-6xl md:text-7xl font-bold tracking-tight text-white"
             >
               اخوت
             </motion.h1>
-            <motion.p
-              initial={{ opacity: 0.4 }}
-              animate={{ opacity: 0.8 }}
-              className="mt-4 text-sm text-gray-400 tracking-widest"
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-5"
             >
-              loading... {progress} %
-            </motion.p>
+              <div className="w-40 h-1 mx-auto bg-white/10 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-[#0F5C55] rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.1 }}
+                />
+              </div>
+              <p className="mt-3 text-xs text-white/50 tracking-widest">{progress}%</p>
+            </motion.div>
           </div>
         </motion.div>
       )}
